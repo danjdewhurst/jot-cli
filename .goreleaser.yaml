@@ -7,7 +7,7 @@ before:
 
 builds:
   - main: .
-    binary: jot
+    binary: jot-cli
     env:
       - CGO_ENABLED=0
     goos:
@@ -21,21 +21,22 @@ builds:
 
 archives:
   - format: tar.gz
-    name_template: "jot_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    name_template: "jot-cli_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
 brews:
   - repository:
       owner: danjdewhurst
       name: homebrew-tap
       token: "{{ .Env.GITHUB_TOKEN }}"
-    name: jot
+    name: jot-cli
     homepage: https://github.com/danjdewhurst/jot-cli
     description: A fast, context-aware notes tool for the terminal
     license: MIT
     install: |
-      bin.install "jot"
+      bin.install "jot-cli"
+      bin.install_symlink "jot-cli" => "j"
     test: |
-      assert_match "jot", shell_output("#{bin}/jot version")
+      assert_match "jot-cli", shell_output("#{bin}/jot-cli version")
 
 checksum:
   name_template: "checksums.txt"

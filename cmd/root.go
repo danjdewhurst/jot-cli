@@ -20,9 +20,9 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "jot",
+	Use:   "jot-cli",
 	Short: "A CLI-first notes app",
-	Long:  "jot is a fast, context-aware notes tool for the terminal.",
+	Long:  "jot-cli is a fast, context-aware notes tool for the terminal.",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		cfg = config.Load()
 		if flagDB != "" {

@@ -1,6 +1,6 @@
 <div align="center">
 
-# jot
+# jot-cli
 
 **A fast, context-aware notes tool for the terminal.**
 
@@ -16,9 +16,9 @@ Zero config. Single binary. Works with AI agents out of the box.
 
 ---
 
-## Why jot?
+## Why jot-cli?
 
-Most note tools live in the browser. **jot** lives where you work — in the terminal.
+Most note tools live in the browser. **jot-cli** lives where you work — in the terminal.
 
 - **Context-aware** — automatically tags notes with your current folder, git repo, and branch
 - **Fast search** — SQLite FTS5 full-text search across all notes and tags
@@ -35,8 +35,10 @@ Most note tools live in the browser. **jot** lives where you work — in the ter
 
 ```bash
 brew tap danjdewhurst/tap
-brew install jot
+brew install jot-cli
 ```
+
+This installs `jot-cli` and a `j` shorthand alias.
 
 **Go:**
 
@@ -49,7 +51,8 @@ go install github.com/danjdewhurst/jot-cli@latest
 ```bash
 git clone https://github.com/danjdewhurst/jot-cli.git
 cd jot-cli
-make build    # → bin/jot
+make build      # → bin/jot-cli
+make install    # installs jot-cli + j alias
 ```
 
 ---
@@ -58,17 +61,19 @@ make build    # → bin/jot
 
 ```bash
 # Jot something down
-jot add -t "Fix the auth bug" -m "Token refresh fails after 24h"
+j add -t "Fix the auth bug" -m "Token refresh fails after 24h"
 
 # Search your notes
-jot search "auth bug"
+j search "auth bug"
 
 # List notes from this repo
-jot list --repo
+j list --repo
 
 # Launch the TUI
-jot
+j
 ```
+
+> `j` and `jot-cli` are interchangeable — use whichever you prefer.
 
 ---
 
@@ -76,23 +81,23 @@ jot
 
 | Command | Description |
 |---------|-------------|
-| `jot` | Launch TUI (or list if not a TTY) |
-| `jot add` | Create a note — via flags, `$EDITOR`, or stdin |
-| `jot list` | List notes with optional tag filters |
-| `jot show <id>` | Display a single note |
-| `jot edit <id>` | Edit a note — via flags or `$EDITOR` |
-| `jot rm <id>` | Archive a note (or `--purge --force` to delete) |
-| `jot search <query>` | Full-text search with FTS5 |
-| `jot tag list` | Browse all tags |
-| `jot tag add <id> <key:value>` | Tag a note |
-| `jot tag rm <id> <key:value>` | Remove a tag |
-| `jot version` | Print version |
+| `j` | Launch TUI (or list if not a TTY) |
+| `j add` | Create a note — via flags, `$EDITOR`, or stdin |
+| `j list` | List notes with optional tag filters |
+| `j show <id>` | Display a single note |
+| `j edit <id>` | Edit a note — via flags or `$EDITOR` |
+| `j rm <id>` | Archive a note (or `--purge --force` to delete) |
+| `j search <query>` | Full-text search with FTS5 |
+| `j tag list` | Browse all tags |
+| `j tag add <id> <key:value>` | Tag a note |
+| `j tag rm <id> <key:value>` | Remove a tag |
+| `j version` | Print version |
 
 **Global flags:** `--json` `--db <path>` `--verbose`
 
 > **Tip:** Note IDs are ULIDs — you can use any unique prefix instead of the full 26 characters:
 > ```bash
-> jot show 01KJM
+> j show 01KJM
 > ```
 
 ---
@@ -110,10 +115,10 @@ Every note is automatically tagged with where it was created:
 Then filter by context later:
 
 ```bash
-jot list --folder      # Notes from this directory
-jot list --repo        # Notes from this git repo
-jot list --branch      # Notes from this branch
-jot list --tag git_repo:danjdewhurst/jot-cli   # Explicit tag filter
+j list --folder      # Notes from this directory
+j list --repo        # Notes from this git repo
+j list --branch      # Notes from this branch
+j list --tag git_repo:danjdewhurst/jot-cli   # Explicit tag filter
 ```
 
 Skip auto-tagging with `--no-context`.
@@ -122,14 +127,14 @@ Skip auto-tagging with `--no-context`.
 
 ## Piping & scripting
 
-jot is built for composability:
+jot-cli is built for composability:
 
 ```bash
 # Capture command output
-kubectl get pods | jot add -t "Pod status"
+kubectl get pods | j add -t "Pod status"
 
 # Structured output for scripts
-jot search "deploy" --json | jq '.[].note.title'
+j search "deploy" --json | jq '.[].note.title'
 
 # Default to JSON everywhere
 export JOT_JSON=1
@@ -139,7 +144,7 @@ export JOT_JSON=1
 
 ## TUI
 
-Run `jot` with no arguments to launch the interactive interface.
+Run `j` with no arguments to launch the interactive interface.
 
 <table>
 <tr><th>Key</th><th>Action</th></tr>
@@ -160,7 +165,7 @@ Run `jot` with no arguments to launch the interactive interface.
 
 ## Configuration
 
-**jot works with zero configuration.** Everything below is optional.
+**jot-cli works with zero configuration.** Everything below is optional.
 
 ### Storage
 
@@ -181,17 +186,17 @@ Run `jot` with no arguments to launch the interactive interface.
 
 ## AI agent usage
 
-jot is designed to be called by AI agents (Claude Code, etc.) via shell. Every command supports `--json` for structured I/O, and a [SKILL.md](SKILL.md) is included as a Claude Code skill reference.
+jot-cli is designed to be called by AI agents (Claude Code, etc.) via shell. Every command supports `--json` for structured I/O, and a [SKILL.md](SKILL.md) is included as a Claude Code skill reference.
 
 ```bash
 # Agent creates a note
-jot add -t "Investigation notes" -m "Found the root cause in auth.go:42" --json
+j add -t "Investigation notes" -m "Found the root cause in auth.go:42" --json
 
 # Agent searches context
-jot search "root cause" --json
+j search "root cause" --json
 
 # Agent reads a specific note
-jot show 01KJM --json
+j show 01KJM --json
 ```
 
 ---
@@ -201,9 +206,9 @@ jot show 01KJM --json
 Requires **Go 1.25+**. If using [mise](https://mise.jdx.dev/), the correct version is configured automatically.
 
 ```bash
-make build      # Build to bin/jot
+make build      # Build to bin/jot-cli
 make test       # Run tests with -race
-make install    # Install to $GOPATH/bin
+make install    # Install jot-cli + j alias
 ```
 
 ### Architecture

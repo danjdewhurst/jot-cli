@@ -8,7 +8,7 @@ jot-cli is a CLI-first notes app written in Go. It stores notes in SQLite with F
 
 ```bash
 # Build (requires Go 1.25+ via mise)
-make build          # or: go build -o bin/jot .
+make build          # or: go build -o bin/jot-cli .
 
 # Run all tests
 make test           # or: go test ./... -race -count=1
