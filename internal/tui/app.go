@@ -54,6 +54,19 @@ type noteArchivedMsg struct {
 	id string
 }
 
+type bulkArchivedMsg struct {
+	count int
+}
+
+type bulkDeletedMsg struct {
+	count int
+}
+
+type bulkPinnedMsg struct {
+	count  int
+	pinned bool
+}
+
 type notePinnedMsg struct {
 	id     string
 	pinned bool
@@ -144,6 +157,25 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case noteArchivedMsg:
 		a.statusMsg = "Note archived"
+		return a, tea.Batch(loadNotes(a.store, a.contextFilter), clearStatusAfter(3*time.Second))
+
+	case bulkArchivedMsg:
+		a.list.ClearSelection()
+		a.statusMsg = fmt.Sprintf("Archived %d notes", msg.count)
+		return a, tea.Batch(loadNotes(a.store, a.contextFilter), clearStatusAfter(3*time.Second))
+
+	case bulkDeletedMsg:
+		a.list.ClearSelection()
+		a.statusMsg = fmt.Sprintf("Deleted %d notes", msg.count)
+		return a, tea.Batch(loadNotes(a.store, a.contextFilter), clearStatusAfter(3*time.Second))
+
+	case bulkPinnedMsg:
+		a.list.ClearSelection()
+		if msg.pinned {
+			a.statusMsg = fmt.Sprintf("Pinned %d notes", msg.count)
+		} else {
+			a.statusMsg = fmt.Sprintf("Unpinned %d notes", msg.count)
+		}
 		return a, tea.Batch(loadNotes(a.store, a.contextFilter), clearStatusAfter(3*time.Second))
 
 	case notePinnedMsg:
@@ -266,6 +298,32 @@ func (a *App) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	if kmsg, ok := msg.(tea.KeyMsg); ok {
 		switch {
+		case key.Matches(kmsg, keys.Select):
+			a.list.ToggleSelection()
+			return a, nil
+
+		case key.Matches(kmsg, keys.SelectAll):
+			a.list.SelectAll()
+			return a, nil
+
+		case key.Matches(kmsg, keys.Back) && a.list.HasSelection():
+			a.list.ClearSelection()
+			return a, nil
+
+		case key.Matches(kmsg, keys.Archive):
+			if a.list.HasSelection() {
+				s := a.store
+				ids := a.list.SelectedIDs()
+				return a, func() tea.Msg {
+					count, err := s.ArchiveNotes(ids)
+					if err != nil {
+						return statusMsg(fmt.Sprintf("Error: %v", err))
+					}
+					return bulkArchivedMsg{count: count}
+				}
+			}
+			return a, nil
+
 		case key.Matches(kmsg, keys.Enter):
 			if note, ok := a.list.SelectedNote(); ok {
 				a.detail.SetNote(note)
@@ -283,6 +341,17 @@ func (a *App) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.pushView(viewCompose)
 			return a, nil
 		case key.Matches(kmsg, keys.Delete):
+			if a.list.HasSelection() {
+				s := a.store
+				ids := a.list.SelectedIDs()
+				return a, func() tea.Msg {
+					count, err := s.ArchiveNotes(ids)
+					if err != nil {
+						return statusMsg(fmt.Sprintf("Error: %v", err))
+					}
+					return bulkArchivedMsg{count: count}
+				}
+			}
 			if note, ok := a.list.SelectedNote(); ok {
 				s := a.store
 				return a, func() tea.Msg {
@@ -297,6 +366,17 @@ func (a *App) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.list.EnterSearch()
 			return a, nil
 		case key.Matches(kmsg, keys.Pin):
+			if a.list.HasSelection() {
+				s := a.store
+				ids := a.list.SelectedIDs()
+				return a, func() tea.Msg {
+					count, err := s.PinNotes(ids)
+					if err != nil {
+						return statusMsg(fmt.Sprintf("Error: %v", err))
+					}
+					return bulkPinnedMsg{count: count, pinned: true}
+				}
+			}
 			if note, ok := a.list.SelectedNote(); ok {
 				s := a.store
 				noteID := note.ID
@@ -392,8 +472,10 @@ func (a App) renderStatusBar() string {
 				left = fmt.Sprintf("%d results for '%s'", count, query)
 			}
 			right = "esc:clear search  enter:open"
+		} else if a.list.HasSelection() {
+			right = "a:archive  d:archive  p:pin  space:toggle  ctrl+a:all  esc:clear"
 		} else {
-			right = "n:new  p:pin  /:search  c:context  ?:help  q:quit"
+			right = "n:new  p:pin  /:filter  space:select  c:context  ?:help  q:quit"
 		}
 	case viewDetail:
 		right = "e:edit  esc:back"

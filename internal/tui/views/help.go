@@ -42,11 +42,18 @@ func (h HelpView) View() string {
 	section("Actions", [][2]string{
 		{"n", "New note"},
 		{"e", "Edit note"},
-		{"d", "Archive note"},
-		{"p", "Toggle pin"},
+		{"d", "Archive note (or selected)"},
+		{"p", "Toggle pin (or pin selected)"},
 		{"/", "Filter notes"},
 		{"?", "This help"},
 		{"q", "Quit"},
+	})
+
+	section("Multi-select", [][2]string{
+		{"space", "Toggle selection"},
+		{"ctrl+a", "Select all"},
+		{"a", "Archive selected"},
+		{"esc", "Clear selection"},
 	})
 
 	section("Compose", [][2]string{

@@ -17,21 +17,27 @@ type keyMap struct {
 	Down          key.Binding
 	PageUp        key.Binding
 	PageDown      key.Binding
+	Select        key.Binding
+	SelectAll     key.Binding
+	Archive       key.Binding
 }
 
 var keys = keyMap{
-	Quit:     key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", "quit")),
-	Help:     key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
-	Enter:    key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "open")),
-	Back:     key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
-	New:      key.NewBinding(key.WithKeys("n"), key.WithHelp("n", "new note")),
-	Delete:   key.NewBinding(key.WithKeys("d"), key.WithHelp("d", "archive")),
-	Search:   key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "search")),
+	Quit:          key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", "quit")),
+	Help:          key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
+	Enter:         key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "open")),
+	Back:          key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
+	New:           key.NewBinding(key.WithKeys("n"), key.WithHelp("n", "new note")),
+	Delete:        key.NewBinding(key.WithKeys("d"), key.WithHelp("d", "archive/delete")),
+	Search:        key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "search")),
 	Edit:          key.NewBinding(key.WithKeys("e"), key.WithHelp("e", "edit")),
 	ContextFilter: key.NewBinding(key.WithKeys("c"), key.WithHelp("c", "toggle context filter")),
 	Pin:           key.NewBinding(key.WithKeys("p"), key.WithHelp("p", "toggle pin")),
-	Up:       key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
-	Down:     key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
-	PageUp:   key.NewBinding(key.WithKeys("pgup", "ctrl+u"), key.WithHelp("pgup", "page up")),
-	PageDown: key.NewBinding(key.WithKeys("pgdown", "ctrl+d"), key.WithHelp("pgdn", "page down")),
+	Up:            key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
+	Down:          key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
+	PageUp:        key.NewBinding(key.WithKeys("pgup", "ctrl+u"), key.WithHelp("pgup", "page up")),
+	PageDown:      key.NewBinding(key.WithKeys("pgdown", "ctrl+d"), key.WithHelp("pgdn", "page down")),
+	Select:        key.NewBinding(key.WithKeys(" "), key.WithHelp("space", "toggle select")),
+	SelectAll:     key.NewBinding(key.WithKeys("ctrl+a"), key.WithHelp("ctrl+a", "select all")),
+	Archive:       key.NewBinding(key.WithKeys("a"), key.WithHelp("a", "archive selected")),
 }

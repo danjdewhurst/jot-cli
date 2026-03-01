@@ -39,12 +39,20 @@ j edit <id> -t "New Title" -m "New Body" --json
 # Archive a note
 j rm <id> --json
 
+# Archive multiple notes (by ID or tag filter)
+j archive <id1> <id2> --json
+j archive --tag folder:old-project --force --json
+
 # Permanently delete
 j rm <id> --purge --force --json
+j rm --tag git_repo:stale --purge --force --json  # Bulk delete
 
 # Pin/unpin a note (pinned notes float to top of lists)
-j pin <id> --json                 # Toggle pin
+j pin <id> --json                 # Toggle pin (single)
+j pin <id1> <id2> --json          # Bulk pin
+j pin --tag priority:high --force --json  # Bulk pin by filter
 j unpin <id> --json               # Explicitly unpin
+j unpin --tag priority:high --force --json  # Bulk unpin
 
 # List only pinned notes
 j list --pinned --json
@@ -99,7 +107,15 @@ j dup <id> --json
 # Manage tags
 j tag list --json
 j tag add <id> "key:value" --json
+j tag add <id1> <id2> "key:value" --json          # Bulk tag by IDs
+j tag add --tag folder:work "project:active" --force --json  # Bulk tag by filter
 j tag rm <id> "key:value" --json
+
+# Bulk operations — safety flags
+# --dry-run: preview what would be affected
+j archive --tag folder:old --dry-run
+# --force: skip confirmation for bulk operations
+j archive --tag folder:old --force
 
 # Note history — view and revert to previous versions
 j history <id> --json                        # List all versions

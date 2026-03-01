@@ -98,10 +98,11 @@ j
 | `j log` | Compact, git-log style chronological view of notes |
 | `j show <id>` | Display a single note |
 | `j edit <id>` | Edit a note — via flags or `$EDITOR` |
-| `j rm <id>` | Archive a note (or `--purge --force` to delete) |
+| `j rm [<id>...]` | Archive notes (or `--purge --force` to delete) |
+| `j archive [<id>...]` | Archive notes (supports `--tag` filter for bulk) |
 | `j dup <id>` | Duplicate a note (copies title, body, and user tags) |
-| `j pin <id>` | Toggle pin on a note (pinned notes float to the top) |
-| `j unpin <id>` | Explicitly unpin a note |
+| `j pin [<id>...]` | Toggle pin (single) or bulk pin notes |
+| `j unpin [<id>...]` | Unpin notes |
 | `j history <id>` | Show version history for a note |
 | `j revert <id>` | Revert a note to a previous version |
 | `j stats` | Show aggregate note statistics |
@@ -114,7 +115,7 @@ j
 | `j sync push` | Push local changes only |
 | `j sync pull` | Pull remote changes only |
 | `j tag list` | Browse all tags |
-| `j tag add <id> <key:value>` | Tag a note |
+| `j tag add [<id>...] <key:value>` | Tag one or more notes |
 | `j tag rm <id> <key:value>` | Remove a tag |
 | `j config` | Show resolved configuration |
 | `j config --path` | Print config file path |
@@ -225,6 +226,34 @@ export JOT_JSON=1
 
 ---
 
+## Bulk operations
+
+Operate on multiple notes at once — by IDs or by tag filter:
+
+```bash
+# Archive all notes matching a tag
+j archive --tag folder:old-project
+
+# Archive specific notes by ID
+j archive abc123 def456 ghi789
+
+# Bulk tag notes
+j tag add --tag folder:work project:active
+
+# Bulk pin
+j pin --tag priority:high
+
+# Bulk delete (requires --force)
+j rm --tag git_repo:deleted-repo --purge --force
+
+# Preview what would be affected
+j archive --tag folder:old-project --dry-run
+```
+
+All destructive bulk operations require `--force` or interactive confirmation. Use `--dry-run` to preview.
+
+---
+
 ## TUI
 
 Run `j` with no arguments to launch the interactive interface.
@@ -235,12 +264,15 @@ Run `j` with no arguments to launch the interactive interface.
 <tr><td><kbd>Enter</kbd></td><td>Open note</td></tr>
 <tr><td><kbd>n</kbd></td><td>New note</td></tr>
 <tr><td><kbd>e</kbd></td><td>Edit note</td></tr>
-<tr><td><kbd>d</kbd></td><td>Archive note</td></tr>
-<tr><td><kbd>p</kbd></td><td>Toggle pin</td></tr>
+<tr><td><kbd>d</kbd></td><td>Archive note (or selected)</td></tr>
+<tr><td><kbd>p</kbd></td><td>Toggle pin (or pin selected)</td></tr>
+<tr><td><kbd>Space</kbd></td><td>Toggle selection</td></tr>
+<tr><td><kbd>Ctrl+A</kbd></td><td>Select all</td></tr>
+<tr><td><kbd>a</kbd></td><td>Archive selected</td></tr>
 <tr><td><kbd>/</kbd></td><td>Search</td></tr>
 <tr><td><kbd>Tab</kbd></td><td>Switch title / body (compose)</td></tr>
 <tr><td><kbd>Ctrl+S</kbd></td><td>Save (compose)</td></tr>
-<tr><td><kbd>Esc</kbd></td><td>Back</td></tr>
+<tr><td><kbd>Esc</kbd></td><td>Back / clear selection</td></tr>
 <tr><td><kbd>?</kbd></td><td>Help</td></tr>
 <tr><td><kbd>q</kbd></td><td>Quit</td></tr>
 </table>

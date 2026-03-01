@@ -56,6 +56,10 @@ var (
 
 	ListPin = lipgloss.NewStyle().
 		Foreground(Yellow)
+
+	ListCheck = lipgloss.NewStyle().
+			Foreground(Green).
+			Bold(true)
 )
 
 // ── Detail view ─────────────────────────────────────────────────────────
