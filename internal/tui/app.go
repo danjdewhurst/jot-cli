@@ -19,7 +19,6 @@ const (
 	viewList viewID = iota
 	viewDetail
 	viewCompose
-	viewSearch
 	viewHelp
 )
 
@@ -34,7 +33,6 @@ type App struct {
 	list    views.ListView
 	detail  views.DetailView
 	compose views.ComposeView
-	search  views.SearchView
 	help    views.HelpView
 
 	statusMsg string
@@ -109,7 +107,6 @@ func newApp(s *store.Store) App {
 		list:    views.NewListView(),
 		detail:  views.NewDetailView(),
 		compose: views.NewComposeView(),
-		search:  views.NewSearchView(),
 		help:    views.NewHelpView(),
 	}
 }
@@ -126,7 +123,6 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.list.SetSize(msg.Width, msg.Height-2)
 		a.detail.SetSize(msg.Width, msg.Height-2)
 		a.compose.SetSize(msg.Width, msg.Height-2)
-		a.search.SetSize(msg.Width, msg.Height-2)
 		return a, nil
 
 	case tea.KeyMsg:
@@ -162,12 +158,15 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.detail.SetBacklinks(msg.backlinks)
 		return a, nil
 
+	case views.SearchTickMsg:
+		return a.handleSearchTick(msg)
+
 	case searchResultsMsg:
 		var notes []model.Note
 		for _, r := range msg.results {
 			notes = append(notes, r.Note)
 		}
-		a.search.SetResults(notes)
+		a.list.SetSearchResults(notes)
 		return a, nil
 
 	case statusMsg:
@@ -183,7 +182,34 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return a.updateCurrentView(msg)
 }
 
+func (a *App) handleSearchTick(msg views.SearchTickMsg) (tea.Model, tea.Cmd) {
+	if !a.list.IsSearching() {
+		return a, nil
+	}
+	// Only search if query hasn't changed since the tick was emitted
+	if msg.Query != a.list.SearchQuery() {
+		return a, nil
+	}
+	if msg.Query == "" {
+		return a, nil
+	}
+	s := a.store
+	query := msg.Query
+	return a, func() tea.Msg {
+		results, err := s.Search(query, nil)
+		if err != nil {
+			return statusMsg(fmt.Sprintf("Search error: %v", err))
+		}
+		return searchResultsMsg{results: results}
+	}
+}
+
 func (a App) handleGlobalKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// When searching, only Escape is handled globally (by ListView itself)
+	if a.view == viewList && a.list.IsSearching() {
+		return a.updateCurrentView(msg)
+	}
+
 	switch {
 	case key.Matches(msg, keys.Quit) && a.view == viewList:
 		return a, tea.Quit
@@ -211,13 +237,33 @@ func (a *App) updateCurrentView(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a.updateDetail(msg)
 	case viewCompose:
 		return a.updateCompose(msg)
-	case viewSearch:
-		return a.updateSearch(msg)
 	}
 	return a, nil
 }
 
 func (a *App) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// When searching, delegate all keys to the list's search handler
+	if a.list.IsSearching() {
+		if kmsg, ok := msg.(tea.KeyMsg); ok {
+			if key.Matches(kmsg, keys.Enter) {
+				if note, ok := a.list.SelectedNote(); ok {
+					a.list.ExitSearch()
+					a.detail.SetNote(note)
+					a.pushView(viewDetail)
+					s := a.store
+					noteID := note.ID
+					return a, func() tea.Msg {
+						backlinks, _ := s.ReferencesTo(noteID)
+						return backlinksLoadedMsg{backlinks: backlinks}
+					}
+				}
+				return a, nil
+			}
+		}
+		cmd := a.list.Update(msg)
+		return a, cmd
+	}
+
 	if kmsg, ok := msg.(tea.KeyMsg); ok {
 		switch {
 		case key.Matches(kmsg, keys.Enter):
@@ -248,8 +294,7 @@ func (a *App) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return a, nil
 		case key.Matches(kmsg, keys.Search):
-			a.search.Reset()
-			a.pushView(viewSearch)
+			a.list.EnterSearch()
 			return a, nil
 		case key.Matches(kmsg, keys.Pin):
 			if note, ok := a.list.SelectedNote(); ok {
@@ -275,8 +320,8 @@ func (a *App) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return a, tea.Batch(loadNotes(a.store, a.contextFilter), clearStatusAfter(3*time.Second))
 		}
 	}
-	a.list.Update(msg)
-	return a, nil
+	cmd := a.list.Update(msg)
+	return a, cmd
 }
 
 func (a *App) updateDetail(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -319,39 +364,6 @@ func (a *App) updateCompose(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return a, cmd
 }
 
-func (a *App) updateSearch(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if kmsg, ok := msg.(tea.KeyMsg); ok {
-		if key.Matches(kmsg, keys.Enter) {
-			if note, ok := a.search.SelectedNote(); ok {
-				a.detail.SetNote(note)
-				a.pushView(viewDetail)
-				s := a.store
-				noteID := note.ID
-				return a, func() tea.Msg {
-					backlinks, _ := s.ReferencesTo(noteID)
-					return backlinksLoadedMsg{backlinks: backlinks}
-				}
-			}
-		}
-	}
-
-	inputCmd := a.search.Update(msg)
-
-	// Trigger search on query change
-	if q := a.search.Query(); q != "" {
-		s := a.store
-		searchCmd := func() tea.Msg {
-			results, err := s.Search(q, nil)
-			if err != nil {
-				return statusMsg(fmt.Sprintf("Search error: %v", err))
-			}
-			return searchResultsMsg{results: results}
-		}
-		return a, tea.Batch(inputCmd, searchCmd)
-	}
-	return a, inputCmd
-}
-
 func (a App) View() string {
 	var content string
 	switch a.view {
@@ -361,8 +373,6 @@ func (a App) View() string {
 		content = a.detail.View()
 	case viewCompose:
 		content = a.compose.View()
-	case viewSearch:
-		content = a.search.View()
 	case viewHelp:
 		content = a.help.View()
 	}
@@ -376,13 +386,19 @@ func (a App) renderStatusBar() string {
 	right := ""
 	switch a.view {
 	case viewList:
-		right = "n:new  p:pin  /:search  c:context  ?:help  q:quit"
+		if a.list.IsSearching() {
+			count, query := a.list.ResultCount()
+			if query != "" {
+				left = fmt.Sprintf("%d results for '%s'", count, query)
+			}
+			right = "esc:clear search  enter:open"
+		} else {
+			right = "n:new  p:pin  /:search  c:context  ?:help  q:quit"
+		}
 	case viewDetail:
 		right = "e:edit  esc:back"
 	case viewCompose:
 		right = "ctrl+s:save  esc:cancel"
-	case viewSearch:
-		right = "enter:open  esc:back"
 	case viewHelp:
 		right = "esc:back"
 	}

@@ -44,7 +44,7 @@ func (h HelpView) View() string {
 		{"e", "Edit note"},
 		{"d", "Archive note"},
 		{"p", "Toggle pin"},
-		{"/", "Search"},
+		{"/", "Filter notes"},
 		{"?", "This help"},
 		{"q", "Quit"},
 	})

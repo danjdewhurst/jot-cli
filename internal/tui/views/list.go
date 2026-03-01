@@ -3,12 +3,23 @@ package views
 import (
 	"fmt"
 	"strings"
+	"time"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/danjdewhurst/jot-cli/internal/model"
 	"github.com/danjdewhurst/jot-cli/internal/render"
 	"github.com/danjdewhurst/jot-cli/internal/tui/theme"
 )
+
+// SearchTickMsg is fired when the debounce timer expires.
+// App.go compares Query against the current input to decide whether to search.
+type SearchTickMsg struct {
+	Query string
+}
+
+const searchDebounce = 150 * time.Millisecond
 
 type ListView struct {
 	notes         []model.Note
@@ -17,10 +28,20 @@ type ListView struct {
 	height        int
 	offset        int
 	contextFilter bool
+
+	// Search mode
+	searching bool
+	input     textinput.Model
+	allNotes  []model.Note // snapshot of notes before search, restored on exit
 }
 
 func NewListView() ListView {
-	return ListView{}
+	ti := textinput.New()
+	ti.Placeholder = "Filter notes…"
+	ti.TextStyle = lipgloss.NewStyle().Foreground(theme.Text)
+	ti.PlaceholderStyle = lipgloss.NewStyle().Foreground(theme.Overlay0)
+	ti.Cursor.Style = lipgloss.NewStyle().Foreground(theme.Lavender)
+	return ListView{input: ti}
 }
 
 func (l *ListView) SetNotes(notes []model.Note) {
@@ -37,6 +58,7 @@ func (l *ListView) SetContextFilter(enabled bool) {
 func (l *ListView) SetSize(w, h int) {
 	l.width = w
 	l.height = h
+	l.input.Width = w - 12
 }
 
 func (l *ListView) SelectedNote() (model.Note, bool) {
@@ -46,10 +68,52 @@ func (l *ListView) SelectedNote() (model.Note, bool) {
 	return model.Note{}, false
 }
 
-func (l *ListView) Update(msg tea.Msg) {
+func (l *ListView) EnterSearch() {
+	l.searching = true
+	l.allNotes = make([]model.Note, len(l.notes))
+	copy(l.allNotes, l.notes)
+	l.input.Reset()
+	l.input.Focus()
+}
+
+func (l *ListView) ExitSearch() {
+	l.searching = false
+	l.input.Blur()
+	l.input.Reset()
+	if l.allNotes != nil {
+		l.notes = l.allNotes
+		l.allNotes = nil
+	}
+	l.cursor = 0
+	l.offset = 0
+}
+
+func (l *ListView) IsSearching() bool {
+	return l.searching
+}
+
+func (l *ListView) SearchQuery() string {
+	return strings.TrimSpace(l.input.Value())
+}
+
+func (l *ListView) SetSearchResults(notes []model.Note) {
+	l.notes = notes
+	l.cursor = 0
+	l.offset = 0
+}
+
+func (l *ListView) ResultCount() (int, string) {
+	return len(l.notes), l.SearchQuery()
+}
+
+func (l *ListView) Update(msg tea.Msg) tea.Cmd {
+	if l.searching {
+		return l.updateSearch(msg)
+	}
+
 	if kmsg, ok := msg.(tea.KeyMsg); ok {
 		if len(l.notes) == 0 {
-			return
+			return nil
 		}
 		switch kmsg.String() {
 		case "up", "k":
@@ -78,10 +142,49 @@ func (l *ListView) Update(msg tea.Msg) {
 	}
 
 	// Keep cursor in view
-	visibleLines := l.height - 3
-	if visibleLines < 1 {
-		visibleLines = 1
+	l.scrollToCursor()
+	return nil
+}
+
+func (l *ListView) updateSearch(msg tea.Msg) tea.Cmd {
+	if kmsg, ok := msg.(tea.KeyMsg); ok {
+		switch kmsg.Type {
+		case tea.KeyEscape:
+			l.ExitSearch()
+			return nil
+		case tea.KeyUp:
+			if l.cursor > 0 {
+				l.cursor--
+			}
+			l.scrollToCursor()
+			return nil
+		case tea.KeyDown:
+			if l.cursor < len(l.notes)-1 {
+				l.cursor++
+			}
+			l.scrollToCursor()
+			return nil
+		}
 	}
+
+	prevValue := l.input.Value()
+	var cmd tea.Cmd
+	l.input, cmd = l.input.Update(msg)
+
+	// If input changed, emit a debounce tick
+	if l.input.Value() != prevValue {
+		query := l.SearchQuery()
+		tickCmd := tea.Tick(searchDebounce, func(_ time.Time) tea.Msg {
+			return SearchTickMsg{Query: query}
+		})
+		return tea.Batch(cmd, tickCmd)
+	}
+
+	return cmd
+}
+
+func (l *ListView) scrollToCursor() {
+	visibleLines := l.visibleLines()
 	if l.cursor < l.offset {
 		l.offset = l.cursor
 	}
@@ -90,7 +193,22 @@ func (l *ListView) Update(msg tea.Msg) {
 	}
 }
 
+func (l ListView) visibleLines() int {
+	v := l.height - 3
+	if l.searching {
+		v -= 2 // search input + gap
+	}
+	if v < 1 {
+		v = 1
+	}
+	return v
+}
+
 func (l ListView) View() string {
+	if l.searching {
+		return l.viewSearch()
+	}
+
 	if len(l.notes) == 0 {
 		return theme.ListTitle.Render("jot") + "\n\nNo notes yet. Press n to create one."
 	}
@@ -103,11 +221,34 @@ func (l ListView) View() string {
 	b.WriteString(theme.ListTitle.Render(title))
 	b.WriteString("\n")
 
-	visibleLines := l.height - 3
-	if visibleLines < 1 {
-		visibleLines = 1
+	l.renderNotes(&b)
+	return b.String()
+}
+
+func (l ListView) viewSearch() string {
+	var b strings.Builder
+
+	b.WriteString(theme.SearchPrompt.Render("Filter: "))
+	b.WriteString(l.input.View())
+	b.WriteString("\n")
+
+	q := strings.TrimSpace(l.input.Value())
+	if len(l.notes) == 0 {
+		if q != "" {
+			b.WriteString(theme.SearchDim.Render("No results."))
+		}
+		return b.String()
 	}
 
+	b.WriteString(theme.SearchDim.Render(fmt.Sprintf("%d results", len(l.notes))))
+	b.WriteString("\n")
+
+	l.renderNotes(&b)
+	return b.String()
+}
+
+func (l ListView) renderNotes(b *strings.Builder) {
+	visibleLines := l.visibleLines()
 	end := l.offset + visibleLines
 	if end > len(l.notes) {
 		end = len(l.notes)
@@ -157,7 +298,4 @@ func (l ListView) View() string {
 			b.WriteString("\n")
 		}
 	}
-
-	return b.String()
 }
-
