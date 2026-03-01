@@ -89,6 +89,10 @@ j sync --sync-dir /path/to/shared --json     # Use specific sync directory
 j stats                                      # Human-readable summary
 j stats --json                               # Machine-readable output
 
+# Show detected environment context
+j context                                    # Table output: folder, git_repo, git_branch
+j context --json                             # Machine-readable output
+
 # Duplicate a note (copies title, body, user tags; regenerates context tags)
 j dup <id> --json
 

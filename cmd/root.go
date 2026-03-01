@@ -41,7 +41,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		// Commands that don't need DB
-		if cmd.Name() == "version" {
+		if cmd.Name() == "version" || cmd.Name() == "context" {
 			return nil
 		}
 

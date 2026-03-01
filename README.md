@@ -103,6 +103,7 @@ j
 | `j pin <id>` | Toggle pin on a note (pinned notes float to the top) |
 | `j unpin <id>` | Explicitly unpin a note |
 | `j stats` | Show aggregate note statistics |
+| `j context` | Show detected environment context (folder, git repo, branch) |
 | `j search <query>` | Full-text search with FTS5 |
 | `j export` | Export notes to JSON or Markdown |
 | `j import <file>` | Import notes from a JSON export |
