@@ -729,3 +729,34 @@ func TestListNotes_SortAsc(t *testing.T) {
 		t.Errorf("asc order: first note = %q, want %q", notes[0].Title, "First")
 	}
 }
+
+func TestNoteExistsByContent(t *testing.T) {
+	s := newTestStore(t)
+
+	_, _ = s.CreateNote("Unique Title", "Unique body", nil)
+
+	exists, err := s.NoteExistsByContent("Unique Title", "Unique body")
+	if err != nil {
+		t.Fatalf("checking existence: %v", err)
+	}
+	if !exists {
+		t.Error("expected note to exist")
+	}
+
+	exists, err = s.NoteExistsByContent("Different Title", "Different body")
+	if err != nil {
+		t.Fatalf("checking existence: %v", err)
+	}
+	if exists {
+		t.Error("expected note not to exist")
+	}
+
+	// Same title, different body — should not match
+	exists, err = s.NoteExistsByContent("Unique Title", "Different body")
+	if err != nil {
+		t.Fatalf("checking existence: %v", err)
+	}
+	if exists {
+		t.Error("expected no match with same title but different body")
+	}
+}

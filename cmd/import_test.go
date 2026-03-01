@@ -28,13 +28,14 @@ func writeEnvelope(t *testing.T, env model.ExportEnvelope) string {
 // newImportCmd creates a fresh import cobra command for testing.
 func newImportCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:  "import <file>",
+		Use:  "import <file|directory>",
 		Args: cobra.ExactArgs(1),
 		RunE: runImport,
 	}
 	cmd.Flags().Bool("dry-run", false, "Preview import without writing")
 	cmd.Flags().Bool("new-ids", false, "Generate new IDs instead of preserving originals")
 	cmd.Flags().Bool("no-context", false, "Skip auto-context tags")
+	cmd.Flags().Bool("force", false, "Skip deduplication check")
 	cmd.Flags().StringSlice("tag", nil, "Additional tags for all imported notes (key:value)")
 	return cmd
 }
@@ -262,6 +263,225 @@ func TestImportJSON_MalformedJSON(t *testing.T) {
 	err := cmd.Execute()
 	if err == nil {
 		t.Fatal("expected error for malformed JSON")
+	}
+}
+
+func writeMDFile(t *testing.T, dir, name, content string) string {
+	t.Helper()
+	path := filepath.Join(dir, name)
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("writing file: %v", err)
+	}
+	return path
+}
+
+func TestImportMarkdown_SingleFile(t *testing.T) {
+	s := openTestStore(t, testDBPath(t))
+	setDB(t, s)
+
+	dir := t.TempDir()
+	mdFile := writeMDFile(t, dir, "note.md", `---
+title: Markdown Note
+tags:
+  - project:work
+created: 2024-03-15T12:00:00Z
+---
+This is the body.
+`)
+
+	cmd := newImportCmd()
+	cmd.SetArgs([]string{"--no-context", mdFile})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("import: %v", err)
+	}
+
+	notes, err := db.ListNotes(model.NoteFilter{})
+	if err != nil {
+		t.Fatalf("listing: %v", err)
+	}
+	if len(notes) != 1 {
+		t.Fatalf("got %d notes, want 1", len(notes))
+	}
+	if notes[0].Title != "Markdown Note" {
+		t.Errorf("title = %q, want %q", notes[0].Title, "Markdown Note")
+	}
+	if notes[0].Body != "This is the body.\n" {
+		t.Errorf("body = %q, want %q", notes[0].Body, "This is the body.\n")
+	}
+	wantTime := time.Date(2024, 3, 15, 12, 0, 0, 0, time.UTC)
+	if !notes[0].CreatedAt.Equal(wantTime) {
+		t.Errorf("created_at = %v, want %v", notes[0].CreatedAt, wantTime)
+	}
+	// Should have the project:work tag
+	found := false
+	for _, tag := range notes[0].Tags {
+		if tag.Key == "project" && tag.Value == "work" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected project:work tag, got %v", notes[0].Tags)
+	}
+}
+
+func TestImportMarkdown_Directory(t *testing.T) {
+	s := openTestStore(t, testDBPath(t))
+	setDB(t, s)
+
+	dir := t.TempDir()
+	writeMDFile(t, dir, "one.md", "# First\n\nBody one.\n")
+	writeMDFile(t, dir, "two.md", "# Second\n\nBody two.\n")
+	// Non-md file should be ignored
+	writeMDFile(t, dir, "readme.txt", "not a note")
+
+	cmd := newImportCmd()
+	cmd.SetArgs([]string{"--no-context", dir})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("import: %v", err)
+	}
+
+	notes, err := db.ListNotes(model.NoteFilter{})
+	if err != nil {
+		t.Fatalf("listing: %v", err)
+	}
+	if len(notes) != 2 {
+		t.Errorf("got %d notes, want 2", len(notes))
+	}
+}
+
+func TestImportMarkdown_DryRun(t *testing.T) {
+	s := openTestStore(t, testDBPath(t))
+	setDB(t, s)
+
+	dir := t.TempDir()
+	mdFile := writeMDFile(t, dir, "dry.md", "# Dry Run\n\nBody.\n")
+
+	cmd := newImportCmd()
+	cmd.SetArgs([]string{"--dry-run", "--no-context", mdFile})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("import: %v", err)
+	}
+
+	notes, err := db.ListNotes(model.NoteFilter{Archived: true})
+	if err != nil {
+		t.Fatalf("listing: %v", err)
+	}
+	if len(notes) != 0 {
+		t.Errorf("got %d notes, want 0 after dry run", len(notes))
+	}
+}
+
+func TestImportMarkdown_DedupSkips(t *testing.T) {
+	s := openTestStore(t, testDBPath(t))
+	setDB(t, s)
+
+	// Pre-create a note with the same title and body
+	_, err := s.CreateNote("Existing Note", "Same body.\n", nil)
+	if err != nil {
+		t.Fatalf("creating note: %v", err)
+	}
+
+	dir := t.TempDir()
+	mdFile := writeMDFile(t, dir, "dup.md", "---\ntitle: Existing Note\n---\nSame body.\n")
+
+	cmd := newImportCmd()
+	cmd.SetArgs([]string{"--no-context", mdFile})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("import: %v", err)
+	}
+
+	notes, err := db.ListNotes(model.NoteFilter{})
+	if err != nil {
+		t.Fatalf("listing: %v", err)
+	}
+	if len(notes) != 1 {
+		t.Errorf("got %d notes, want 1 (duplicate should be skipped)", len(notes))
+	}
+}
+
+func TestImportMarkdown_ForceSkipsDedup(t *testing.T) {
+	s := openTestStore(t, testDBPath(t))
+	setDB(t, s)
+
+	// Pre-create a note with the same title and body
+	_, err := s.CreateNote("Force Note", "Same body.\n", nil)
+	if err != nil {
+		t.Fatalf("creating note: %v", err)
+	}
+
+	dir := t.TempDir()
+	mdFile := writeMDFile(t, dir, "force.md", "---\ntitle: Force Note\n---\nSame body.\n")
+
+	cmd := newImportCmd()
+	cmd.SetArgs([]string{"--force", "--no-context", mdFile})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("import: %v", err)
+	}
+
+	notes, err := db.ListNotes(model.NoteFilter{})
+	if err != nil {
+		t.Fatalf("listing: %v", err)
+	}
+	if len(notes) != 2 {
+		t.Errorf("got %d notes, want 2 (force should skip dedup)", len(notes))
+	}
+}
+
+func TestImportMarkdown_ExtraTags(t *testing.T) {
+	s := openTestStore(t, testDBPath(t))
+	setDB(t, s)
+
+	dir := t.TempDir()
+	mdFile := writeMDFile(t, dir, "tagged.md", "# Tagged\n\nBody.\n")
+
+	cmd := newImportCmd()
+	cmd.SetArgs([]string{"--no-context", "--tag", "source:import", mdFile})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("import: %v", err)
+	}
+
+	notes, err := db.ListNotes(model.NoteFilter{})
+	if err != nil {
+		t.Fatalf("listing: %v", err)
+	}
+	if len(notes) != 1 {
+		t.Fatalf("got %d notes, want 1", len(notes))
+	}
+	found := false
+	for _, tag := range notes[0].Tags {
+		if tag.Key == "source" && tag.Value == "import" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected source:import tag, got %v", notes[0].Tags)
+	}
+}
+
+func TestImportMarkdown_SubdirectoryWalk(t *testing.T) {
+	s := openTestStore(t, testDBPath(t))
+	setDB(t, s)
+
+	dir := t.TempDir()
+	subDir := filepath.Join(dir, "subdir")
+	if err := os.Mkdir(subDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	writeMDFile(t, dir, "root.md", "# Root\n\nBody.\n")
+	writeMDFile(t, subDir, "nested.md", "# Nested\n\nBody.\n")
+
+	cmd := newImportCmd()
+	cmd.SetArgs([]string{"--no-context", dir})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("import: %v", err)
+	}
+
+	notes, err := db.ListNotes(model.NoteFilter{})
+	if err != nil {
+		t.Fatalf("listing: %v", err)
+	}
+	if len(notes) != 2 {
+		t.Errorf("got %d notes, want 2 (should walk subdirectories)", len(notes))
 	}
 }
 
