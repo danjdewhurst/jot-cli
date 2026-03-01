@@ -101,6 +101,7 @@ j
 | `j rm <id>` | Archive a note (or `--purge --force` to delete) |
 | `j pin <id>` | Toggle pin on a note (pinned notes float to the top) |
 | `j unpin <id>` | Explicitly unpin a note |
+| `j stats` | Show aggregate note statistics |
 | `j search <query>` | Full-text search with FTS5 |
 | `j export` | Export notes to JSON or Markdown |
 | `j import <file>` | Import notes from a JSON export |

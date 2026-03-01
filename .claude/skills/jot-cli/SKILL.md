@@ -85,6 +85,10 @@ j sync push --json                           # Push local changes only
 j sync pull --json                           # Pull remote changes only
 j sync --sync-dir /path/to/shared --json     # Use specific sync directory
 
+# Note statistics
+j stats                                      # Human-readable summary
+j stats --json                               # Machine-readable output
+
 # Manage tags
 j tag list --json
 j tag add <id> "key:value" --json

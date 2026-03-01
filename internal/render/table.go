@@ -2,11 +2,12 @@ package render
 
 import (
 	"fmt"
-	"time"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/danjdewhurst/jot-cli/internal/model"
+	"github.com/danjdewhurst/jot-cli/internal/store"
 )
 
 func NoteTable(w io.Writer, notes []model.Note) {
@@ -75,6 +76,36 @@ func TagTable(w io.Writer, tags []model.Tag) {
 	_, _ = fmt.Fprintf(w, "%s\n", strings.Repeat("─", 50))
 	for _, t := range tags {
 		_, _ = fmt.Fprintf(w, "%-20s  %s\n", t.Key, t.Value)
+	}
+}
+
+// StatsTable writes a human-readable stats summary.
+func StatsTable(w io.Writer, s store.NoteStats) {
+	_, _ = fmt.Fprintf(w, "Notes:       %d", s.TotalNotes)
+	if s.ArchivedNotes > 0 {
+		_, _ = fmt.Fprintf(w, " (%d archived)", s.ArchivedNotes)
+	}
+	_, _ = fmt.Fprintln(w)
+
+	_, _ = fmt.Fprintf(w, "Pinned:      %d\n", s.PinnedNotes)
+	_, _ = fmt.Fprintf(w, "Tags:        %d unique\n", s.UniqueTags)
+
+	if len(s.TopTags) > 0 {
+		var parts []string
+		for _, tc := range s.TopTags {
+			parts = append(parts, fmt.Sprintf("%s:%s (%d)", tc.Key, tc.Value, tc.Count))
+		}
+		_, _ = fmt.Fprintf(w, "Top tags:    %s\n", strings.Join(parts, ", "))
+	}
+
+	_, _ = fmt.Fprintf(w, "This week:   %d notes\n", s.WeeklyCount)
+	_, _ = fmt.Fprintf(w, "This month:  %d notes\n", s.MonthlyCount)
+
+	if !s.OldestDate.IsZero() {
+		_, _ = fmt.Fprintf(w, "Oldest:      %s\n", s.OldestDate.Format(time.DateOnly))
+	}
+	if !s.NewestDate.IsZero() {
+		_, _ = fmt.Fprintf(w, "Newest:      %s\n", s.NewestDate.Format(time.DateOnly))
 	}
 }
 
