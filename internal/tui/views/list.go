@@ -6,22 +6,8 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/danjdewhurst/jot-cli/internal/model"
-)
-
-var (
-	listSelectedStyle = lipgloss.NewStyle().
-				Background(lipgloss.Color("236")).
-				Foreground(lipgloss.Color("15"))
-	listTagStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("243"))
-	listDimStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("240"))
-	listTitleStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("12")).
-			Padding(0, 0, 1, 0)
+	"github.com/danjdewhurst/jot-cli/internal/tui/theme"
 )
 
 type ListView struct {
@@ -103,7 +89,7 @@ func (l *ListView) Update(msg tea.Msg) {
 
 func (l ListView) View() string {
 	if len(l.notes) == 0 {
-		return listTitleStyle.Render("jot") + "\n\nNo notes yet. Press n to create one."
+		return theme.ListTitle.Render("jot") + "\n\nNo notes yet. Press n to create one."
 	}
 
 	var b strings.Builder
@@ -111,7 +97,7 @@ func (l ListView) View() string {
 	if l.contextFilter {
 		title += " (this project)"
 	}
-	b.WriteString(listTitleStyle.Render(title))
+	b.WriteString(theme.ListTitle.Render(title))
 	b.WriteString("\n")
 
 	visibleLines := l.height - 3
@@ -124,17 +110,25 @@ func (l ListView) View() string {
 		end = len(l.notes)
 	}
 
+	// Dynamic title width: use ~60% of terminal width, minimum 20
+	titleWidth := l.width*60/100 - 6
+	if titleWidth < 20 {
+		titleWidth = 20
+	}
+
 	for i := l.offset; i < end; i++ {
 		n := l.notes[i]
 		title := n.Title
 		if title == "" {
-			title = truncate(n.Body, 50)
+			title = truncate(n.Body, titleWidth)
 		}
 		if title == "" {
 			title = "(empty)"
 		}
+
+		pin := "  "
 		if n.Pinned {
-			title = "* " + title
+			pin = theme.ListPin.Render("♦ ")
 		}
 
 		age := relativeTime(n.CreatedAt)
@@ -144,13 +138,18 @@ func (l ListView) View() string {
 		}
 		tags := strings.Join(tagParts, " ")
 
-		line := fmt.Sprintf("  %-50s  %s  %s", truncate(title, 50), listDimStyle.Render(age), listTagStyle.Render(tags))
+		titleFmt := fmt.Sprintf("%%-%ds", titleWidth)
 
 		if i == l.cursor {
-			line = listSelectedStyle.Width(l.width).Render(fmt.Sprintf("▸ %-50s  %s  %s", truncate(title, 50), age, tags))
+			cursor := theme.ListCursor.Render("▸")
+			row := fmt.Sprintf("%s %s"+titleFmt+"  %s  %s", cursor, pin, truncate(title, titleWidth), age, tags)
+			line := theme.ListSelected.Width(l.width).Render(row)
+			b.WriteString(line)
+		} else {
+			line := fmt.Sprintf("  %s"+titleFmt+"  %s  %s", pin, truncate(title, titleWidth), theme.ListDim.Render(age), theme.ListTag.Render(tags))
+			b.WriteString(line)
 		}
 
-		b.WriteString(line)
 		if i < end-1 {
 			b.WriteString("\n")
 		}

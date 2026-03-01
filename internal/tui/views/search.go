@@ -8,11 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/danjdewhurst/jot-cli/internal/model"
-)
-
-var (
-	searchPromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("12")).Bold(true)
-	searchDimStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+	"github.com/danjdewhurst/jot-cli/internal/tui/theme"
 )
 
 type SearchView struct {
@@ -27,6 +23,9 @@ type SearchView struct {
 func NewSearchView() SearchView {
 	ti := textinput.New()
 	ti.Placeholder = "Search notes…"
+	ti.TextStyle = lipgloss.NewStyle().Foreground(theme.Text)
+	ti.PlaceholderStyle = lipgloss.NewStyle().Foreground(theme.Overlay0)
+	ti.Cursor.Style = lipgloss.NewStyle().Foreground(theme.Lavender)
 	ti.Focus()
 	return SearchView{input: ti}
 }
@@ -92,18 +91,18 @@ func (s *SearchView) Update(msg tea.Msg) {
 func (s SearchView) View() string {
 	var b strings.Builder
 
-	b.WriteString(searchPromptStyle.Render("Search: "))
+	b.WriteString(theme.SearchPrompt.Render("Search: "))
 	b.WriteString(s.input.View())
 	b.WriteString("\n\n")
 
 	if len(s.results) == 0 {
 		if s.lastQ != "" {
-			b.WriteString(searchDimStyle.Render("No results."))
+			b.WriteString(theme.SearchDim.Render("No results."))
 		}
 		return b.String()
 	}
 
-	b.WriteString(searchDimStyle.Render(fmt.Sprintf("%d results", len(s.results))))
+	b.WriteString(theme.SearchDim.Render(fmt.Sprintf("%d results", len(s.results))))
 	b.WriteString("\n\n")
 
 	for i, n := range s.results {
@@ -112,11 +111,14 @@ func (s SearchView) View() string {
 			title = truncate(n.Body, 50)
 		}
 
-		prefix := "  "
 		if i == s.cursor {
-			prefix = "▸ "
+			cursor := theme.SearchCursor.Render("▸")
+			row := fmt.Sprintf("%s %s", cursor, title)
+			b.WriteString(theme.SearchSelected.Width(s.width).Render(row))
+		} else {
+			_, _ = fmt.Fprintf(&b, "  %s", title)
 		}
-		_, _ = fmt.Fprintf(&b, "%s%s\n", prefix, title)
+		b.WriteString("\n")
 	}
 
 	return b.String()

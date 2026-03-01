@@ -1,6 +1,10 @@
 package views
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/danjdewhurst/jot-cli/internal/tui/theme"
+)
 
 type HelpView struct{}
 
@@ -8,26 +12,48 @@ func NewHelpView() HelpView { return HelpView{} }
 
 func (h HelpView) View() string {
 	var b strings.Builder
-	b.WriteString("Key Bindings\n")
-	b.WriteString("────────────\n\n")
-	b.WriteString("Navigation\n")
-	b.WriteString("  j/↓     Move down\n")
-	b.WriteString("  k/↑     Move up\n")
-	b.WriteString("  enter   Open note\n")
-	b.WriteString("  esc     Go back\n")
-	b.WriteString("  g/Home  Go to top\n")
-	b.WriteString("  G/End   Go to bottom\n\n")
-	b.WriteString("Actions\n")
-	b.WriteString("  n       New note\n")
-	b.WriteString("  e       Edit note\n")
-	b.WriteString("  d       Archive note\n")
-	b.WriteString("  p       Toggle pin\n")
-	b.WriteString("  /       Search\n")
-	b.WriteString("  ?       This help\n")
-	b.WriteString("  q       Quit\n\n")
-	b.WriteString("Compose\n")
-	b.WriteString("  tab     Switch title/body\n")
-	b.WriteString("  ctrl+s  Save\n")
-	b.WriteString("  esc     Cancel\n")
+
+	b.WriteString(theme.HelpTitle.Render("Key Bindings"))
+	b.WriteString("\n")
+	b.WriteString(theme.HelpDivider.Render("────────────────────────────"))
+	b.WriteString("\n\n")
+
+	section := func(name string, bindings [][2]string) {
+		b.WriteString(theme.HelpSection.Render(name))
+		b.WriteString("\n")
+		for _, bind := range bindings {
+			b.WriteString("  ")
+			b.WriteString(theme.HelpKey.Render(bind[0]))
+			b.WriteString(theme.HelpDesc.Render(bind[1]))
+			b.WriteString("\n")
+		}
+		b.WriteString("\n")
+	}
+
+	section("Navigation", [][2]string{
+		{"j/↓", "Move down"},
+		{"k/↑", "Move up"},
+		{"enter", "Open note"},
+		{"esc", "Go back"},
+		{"g/Home", "Go to top"},
+		{"G/End", "Go to bottom"},
+	})
+
+	section("Actions", [][2]string{
+		{"n", "New note"},
+		{"e", "Edit note"},
+		{"d", "Archive note"},
+		{"p", "Toggle pin"},
+		{"/", "Search"},
+		{"?", "This help"},
+		{"q", "Quit"},
+	})
+
+	section("Compose", [][2]string{
+		{"tab", "Switch title/body"},
+		{"ctrl+s", "Save"},
+		{"esc", "Cancel"},
+	})
+
 	return b.String()
 }

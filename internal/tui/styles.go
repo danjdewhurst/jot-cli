@@ -1,8 +1,5 @@
 package tui
 
-import "github.com/charmbracelet/lipgloss"
+import "github.com/danjdewhurst/jot-cli/internal/tui/theme"
 
-var statusBarStyle = lipgloss.NewStyle().
-	Background(lipgloss.Color("236")).
-	Foreground(lipgloss.Color("252")).
-	Padding(0, 1)
+var statusBarStyle = theme.StatusBar

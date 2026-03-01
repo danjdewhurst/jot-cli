@@ -8,9 +8,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/danjdewhurst/jot-cli/internal/model"
+	"github.com/danjdewhurst/jot-cli/internal/tui/theme"
 )
-
-var composeLabelStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("243"))
 
 type ComposeView struct {
 	noteID    string
@@ -25,11 +24,27 @@ func NewComposeView() ComposeView {
 	ti := textinput.New()
 	ti.Placeholder = "Title"
 	ti.CharLimit = 200
+	ti.TextStyle = lipgloss.NewStyle().Foreground(theme.Text)
+	ti.PlaceholderStyle = lipgloss.NewStyle().Foreground(theme.Overlay0)
+	ti.Cursor.Style = lipgloss.NewStyle().Foreground(theme.Lavender)
 	ti.Focus()
 
 	ta := textarea.New()
 	ta.Placeholder = "Write your note…"
 	ta.ShowLineNumbers = false
+	ta.FocusedStyle.Base = lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(theme.Surface2)
+	ta.BlurredStyle.Base = lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(theme.Surface1)
+	ta.FocusedStyle.Text = lipgloss.NewStyle().Foreground(theme.Text)
+	ta.BlurredStyle.Text = lipgloss.NewStyle().Foreground(theme.Text)
+	ta.FocusedStyle.Placeholder = lipgloss.NewStyle().Foreground(theme.Overlay0)
+	ta.BlurredStyle.Placeholder = lipgloss.NewStyle().Foreground(theme.Overlay0)
+	ta.FocusedStyle.CursorLine = lipgloss.NewStyle().Foreground(theme.Text)
+	ta.BlurredStyle.CursorLine = lipgloss.NewStyle().Foreground(theme.Text)
+	ta.Cursor.Style = lipgloss.NewStyle().Foreground(theme.Lavender)
 
 	return ComposeView{
 		titleIn: ti,
@@ -104,7 +119,7 @@ func (c ComposeView) View() string {
 	if c.noteID != "" {
 		label = "Edit note"
 	}
-	b.WriteString(composeLabelStyle.Render(label))
+	b.WriteString(theme.ComposeLabel.Render(label))
 	b.WriteString("\n\n")
 	b.WriteString(c.titleIn.View())
 	b.WriteString("\n\n")

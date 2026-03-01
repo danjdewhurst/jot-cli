@@ -5,13 +5,8 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/danjdewhurst/jot-cli/internal/model"
-)
-
-var (
-	detailTitleStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("12"))
-	detailMetaStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("243"))
+	"github.com/danjdewhurst/jot-cli/internal/tui/theme"
 )
 
 type DetailView struct {
@@ -67,26 +62,26 @@ func (d DetailView) View() string {
 		title = "(untitled)"
 	}
 	if d.note.Pinned {
-		title = "* " + title
+		title = theme.DetailPin.Render("♦") + " " + title
 	}
-	b.WriteString(detailTitleStyle.Render(title))
+	b.WriteString(theme.DetailTitle.Render(title))
 	b.WriteString("\n")
 
 	meta := fmt.Sprintf("Created: %s  Updated: %s", d.note.CreatedAt.Format("2006-01-02 15:04"), d.note.UpdatedAt.Format("2006-01-02 15:04"))
-	b.WriteString(detailMetaStyle.Render(meta))
+	b.WriteString(theme.DetailMeta.Render(meta))
 	b.WriteString("\n")
 
 	if len(d.note.Tags) > 0 {
-		var tagParts []string
+		var pills []string
 		for _, t := range d.note.Tags {
-			tagParts = append(tagParts, t.String())
+			pills = append(pills, theme.TagPill.Render(t.String()))
 		}
-		b.WriteString(detailMetaStyle.Render("Tags: " + strings.Join(tagParts, ", ")))
+		b.WriteString(" " + strings.Join(pills, " "))
 		b.WriteString("\n")
 	}
 
 	b.WriteString("\n")
-	b.WriteString(d.note.Body)
+	b.WriteString(theme.DetailBody.Render(d.note.Body))
 
 	lines := strings.Split(b.String(), "\n")
 	if d.scroll >= len(lines) {

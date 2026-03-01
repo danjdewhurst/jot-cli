@@ -10,6 +10,9 @@ jot-cli is a CLI-first notes app written in Go. It stores notes in SQLite with F
 # Build (requires Go 1.25+ via mise)
 make build          # or: go build -o bin/jot-cli .
 
+# Install (removes old binary first to avoid macOS code-signing SIGKILL)
+make install
+
 # Run all tests
 make test           # or: go test ./... -race -count=1
 
@@ -27,6 +30,7 @@ go test ./internal/store/... -v
 - `internal/render/` — Output formatters (JSON and table)
 - `internal/config/` — XDG path resolution
 - `internal/tui/` — Bubbletea TUI app, views, and components
+- `internal/tui/theme/` — Centralised Catppuccin Frappé colour palette and lipgloss styles
 
 ## Key conventions
 
@@ -36,6 +40,8 @@ go test ./internal/store/... -v
 - **Tags are key:value pairs** — auto-context tags use keys `folder`, `git_repo`, `git_branch`
 - Migrations are embedded SQL files in `internal/store/migrations/`
 - Tests use temp file databases (not `:memory:`) because Go's `database/sql` connection pool allocates separate in-memory DBs per connection
+- **TUI theme** — all colours and styles live in `internal/tui/theme/`; view files import the theme package rather than defining local styles
+- **macOS install gotcha** — on Apple Silicon, `cp` over an existing binary invalidates its ad-hoc code signature, causing SIGKILL on launch. Always `rm` the old binary before copying the new one
 
 ## TDD — Red/Green/Refactor
 
