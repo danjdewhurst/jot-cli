@@ -20,10 +20,10 @@ builds:
       - -s -w -X github.com/danjdewhurst/jot-cli/cmd.version={{.Version}}
 
 archives:
-  - format: tar.gz
+  - formats: [tar.gz]
     name_template: "jot-cli_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
-brews:
+homebrew_casks:
   - repository:
       owner: danjdewhurst
       name: homebrew-tap
