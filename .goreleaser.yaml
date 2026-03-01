@@ -27,7 +27,7 @@ brews:
   - repository:
       owner: danjdewhurst
       name: homebrew-tap
-      token: "{{ .Env.GITHUB_TOKEN }}"
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
     name: jot-cli
     homepage: https://github.com/danjdewhurst/jot-cli
     description: A fast, context-aware notes tool for the terminal
