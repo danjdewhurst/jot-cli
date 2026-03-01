@@ -1,7 +1,6 @@
 ---
 name: jot-cli
 description: Reference for jot-cli commands and usage. Use when creating, searching, editing, or managing notes with the jot-cli tool.
-user-invocable: false
 ---
 
 # jot-cli — CLI Notes Tool
