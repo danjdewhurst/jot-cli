@@ -101,6 +101,12 @@ j tag list --json
 j tag add <id> "key:value" --json
 j tag rm <id> "key:value" --json
 
+# Note history — view and revert to previous versions
+j history <id> --json                        # List all versions
+j history <id> --version 1 --json            # Show specific version
+j history <id> --version 2 --diff            # Show version with diff
+j revert <id> --version 1 --json             # Revert to a previous version
+
 # Note linking — reference other notes with @<id-prefix> in the body
 j add -t "Follow-up" -m "Related to @01JMXY and @01JNAB" --json
 

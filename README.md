@@ -102,6 +102,8 @@ j
 | `j dup <id>` | Duplicate a note (copies title, body, and user tags) |
 | `j pin <id>` | Toggle pin on a note (pinned notes float to the top) |
 | `j unpin <id>` | Explicitly unpin a note |
+| `j history <id>` | Show version history for a note |
+| `j revert <id>` | Revert a note to a previous version |
 | `j stats` | Show aggregate note statistics |
 | `j context` | Show detected environment context (folder, git repo, branch) |
 | `j search <query>` | Full-text search with FTS5 |

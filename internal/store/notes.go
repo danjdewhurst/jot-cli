@@ -98,6 +98,11 @@ func (s *Store) UpdateNote(id, title, body string) (model.Note, error) {
 	}
 	defer tx.Rollback() //nolint:errcheck // rollback after commit is a no-op
 
+	// Snapshot current state before overwriting
+	if err := saveVersion(tx, id); err != nil {
+		return model.Note{}, fmt.Errorf("saving version: %w", err)
+	}
+
 	res, err := tx.Exec(
 		"UPDATE notes SET title = ?, body = ?, updated_at = ? WHERE id = ?",
 		title, body, now.Format(time.RFC3339), id,
