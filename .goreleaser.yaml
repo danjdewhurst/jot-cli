@@ -1,0 +1,49 @@
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+    - go test ./... -race -count=1
+
+builds:
+  - main: .
+    binary: jot
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X github.com/danjdewhurst/jot-cli/cmd.version={{.Version}}
+
+archives:
+  - format: tar.gz
+    name_template: "jot_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+brews:
+  - repository:
+      owner: danjdewhurst
+      name: homebrew-tap
+      token: "{{ .Env.GITHUB_TOKEN }}"
+    name: jot
+    homepage: https://github.com/danjdewhurst/jot-cli
+    description: A fast, context-aware notes tool for the terminal
+    license: MIT
+    install: |
+      bin.install "jot"
+    test: |
+      assert_match "jot", shell_output("#{bin}/jot version")
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^chore:"
+      - "^ci:"
