@@ -52,9 +52,24 @@ func (d *DetailView) Update(msg tea.Msg) {
 			d.scroll += 10
 		}
 	}
+
+	// Clamp scroll to valid range. Compute total lines from rendered content
+	// so the clamping happens on the real struct, not a value-receiver copy.
+	totalLines := d.contentLineCount()
+	maxScroll := totalLines - d.height
+	if maxScroll < 0 {
+		maxScroll = 0
+	}
+	if d.scroll > maxScroll {
+		d.scroll = maxScroll
+	}
+	if d.scroll < 0 {
+		d.scroll = 0
+	}
 }
 
-func (d DetailView) View() string {
+// renderContent builds the full detail content string (shared by View and contentLineCount).
+func (d DetailView) renderContent() string {
 	var b strings.Builder
 
 	title := d.note.Title
@@ -83,15 +98,26 @@ func (d DetailView) View() string {
 	b.WriteString("\n")
 	b.WriteString(theme.DetailBody.Render(d.note.Body))
 
-	lines := strings.Split(b.String(), "\n")
-	if d.scroll >= len(lines) {
-		d.scroll = len(lines) - 1
+	return b.String()
+}
+
+// contentLineCount returns the number of lines in the rendered content.
+func (d DetailView) contentLineCount() int {
+	return len(strings.Split(d.renderContent(), "\n"))
+}
+
+func (d DetailView) View() string {
+	lines := strings.Split(d.renderContent(), "\n")
+
+	scroll := d.scroll
+	if scroll >= len(lines) {
+		scroll = len(lines) - 1
 	}
-	if d.scroll < 0 {
-		d.scroll = 0
+	if scroll < 0 {
+		scroll = 0
 	}
 
-	visible := lines[d.scroll:]
+	visible := lines[scroll:]
 	if len(visible) > d.height {
 		visible = visible[:d.height]
 	}

@@ -5,16 +5,8 @@ import (
 	"io"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/danjdewhurst/jot-cli/internal/model"
-)
-
-var (
-	logHashStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("214")) // amber
-	logTimestampStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("240")) // dim grey
-	logTitleStyle     = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("15"))  // bright white
-	logTagKeyStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("243")) // mid grey
-	logTagValueStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("110")) // soft blue
+	"github.com/danjdewhurst/jot-cli/internal/tui/theme"
 )
 
 // NoteLog renders notes in a compact, git-log style chronological format.
@@ -25,24 +17,24 @@ func NoteLog(w io.Writer, notes []model.Note) {
 	}
 
 	for i, n := range notes {
-		id := logHashStyle.Render(shortID(n.ID))
-		ts := logTimestampStyle.Render(n.CreatedAt.Format("2006-01-02 15:04"))
+		id := theme.LogHash.Render(shortID(n.ID))
+		ts := theme.LogTimestamp.Render(n.CreatedAt.Format("2006-01-02 15:04"))
 
 		title := n.Title
 		if title == "" {
-			title = truncateLog(n.Body, 60)
+			title = TruncateLog(n.Body, 60)
 		}
 		if title == "" {
 			title = "(empty)"
 		}
-		title = logTitleStyle.Render(title)
+		title = theme.LogTitle.Render(title)
 
 		_, _ = fmt.Fprintf(w, "%s  %s  %s\n", id, ts, title)
 
 		if len(n.Tags) > 0 {
 			var parts []string
 			for _, t := range n.Tags {
-				parts = append(parts, logTagKeyStyle.Render(t.Key+":")+logTagValueStyle.Render(t.Value))
+				parts = append(parts, theme.LogTagKey.Render(t.Key+":")+theme.LogTagValue.Render(t.Value))
 			}
 			indent := strings.Repeat(" ", 28)
 			_, _ = fmt.Fprintf(w, "%s%s\n", indent, strings.Join(parts, "  "))
@@ -54,11 +46,3 @@ func NoteLog(w io.Writer, notes []model.Note) {
 	}
 }
 
-func truncateLog(s string, max int) string {
-	s = strings.ReplaceAll(s, "\n", " ")
-	s = strings.TrimSpace(s)
-	if len(s) > max {
-		return s[:max-1] + "..."
-	}
-	return s
-}

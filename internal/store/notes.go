@@ -11,6 +11,9 @@ import (
 	"github.com/oklog/ulid/v2"
 )
 
+// ErrNoteNotFound is returned when a note cannot be found by its ID.
+var ErrNoteNotFound = errors.New("note not found")
+
 func (s *Store) CreateNote(title, body string, tags []model.Tag) (model.Note, error) {
 	now := time.Now().UTC()
 	id := ulid.Make().String()
@@ -60,14 +63,20 @@ func (s *Store) GetNote(id string) (model.Note, error) {
 		"SELECT id, title, body, created_at, updated_at, archived, pinned FROM notes WHERE id = ?", id,
 	).Scan(&n.ID, &n.Title, &n.Body, &createdAt, &updatedAt, &archived, &pinned)
 	if errors.Is(err, sql.ErrNoRows) {
-		return model.Note{}, fmt.Errorf("note %q not found", id)
+		return model.Note{}, fmt.Errorf("note %q: %w", id, ErrNoteNotFound)
 	}
 	if err != nil {
 		return model.Note{}, fmt.Errorf("querying note: %w", err)
 	}
 
-	n.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
-	n.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+	n.CreatedAt, err = time.Parse(time.RFC3339, createdAt)
+	if err != nil {
+		return model.Note{}, fmt.Errorf("parsing created_at for note %s: %w", n.ID, err)
+	}
+	n.UpdatedAt, err = time.Parse(time.RFC3339, updatedAt)
+	if err != nil {
+		return model.Note{}, fmt.Errorf("parsing updated_at for note %s: %w", n.ID, err)
+	}
 	n.Archived = archived != 0
 	n.Pinned = pinned != 0
 
@@ -97,7 +106,7 @@ func (s *Store) UpdateNote(id, title, body string) (model.Note, error) {
 		return model.Note{}, fmt.Errorf("updating note: %w", err)
 	}
 	if rows, _ := res.RowsAffected(); rows == 0 {
-		return model.Note{}, fmt.Errorf("note %q not found", id)
+		return model.Note{}, fmt.Errorf("note %q: %w", id, ErrNoteNotFound)
 	}
 
 	if err := syncFTS(tx, id); err != nil {
@@ -118,7 +127,7 @@ func (s *Store) ArchiveNote(id string) error {
 		return fmt.Errorf("archiving note: %w", err)
 	}
 	if rows, _ := res.RowsAffected(); rows == 0 {
-		return fmt.Errorf("note %q not found", id)
+		return fmt.Errorf("note %q: %w", id, ErrNoteNotFound)
 	}
 	return nil
 }
@@ -140,7 +149,7 @@ func (s *Store) DeleteNote(id string) error {
 		return fmt.Errorf("deleting note: %w", err)
 	}
 	if rows, _ := res.RowsAffected(); rows == 0 {
-		return fmt.Errorf("note %q not found", id)
+		return fmt.Errorf("note %q: %w", id, ErrNoteNotFound)
 	}
 
 	return tx.Commit()
@@ -207,20 +216,33 @@ func (s *Store) ListNotes(filter model.NoteFilter) ([]model.Note, error) {
 		if err := rows.Scan(&n.ID, &n.Title, &n.Body, &createdAt, &updatedAt, &archived, &pinned); err != nil {
 			return nil, fmt.Errorf("scanning note: %w", err)
 		}
-		n.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
-		n.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+		n.CreatedAt, err = time.Parse(time.RFC3339, createdAt)
+		if err != nil {
+			return nil, fmt.Errorf("parsing created_at for note %s: %w", n.ID, err)
+		}
+		n.UpdatedAt, err = time.Parse(time.RFC3339, updatedAt)
+		if err != nil {
+			return nil, fmt.Errorf("parsing updated_at for note %s: %w", n.ID, err)
+		}
 		n.Archived = archived != 0
 		n.Pinned = pinned != 0
+		notes = append(notes, n)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
-		tags, err := s.getTagsForNote(n.ID)
+	// Fetch tags after closing the rows cursor to avoid holding the
+	// single database connection while making additional queries.
+	for i := range notes {
+		tags, err := s.getTagsForNote(notes[i].ID)
 		if err != nil {
 			return nil, err
 		}
-		n.Tags = tags
-		notes = append(notes, n)
+		notes[i].Tags = tags
 	}
 
-	return notes, rows.Err()
+	return notes, nil
 }
 
 func (s *Store) getTagsForNote(noteID string) ([]model.Tag, error) {
@@ -261,7 +283,7 @@ func (s *Store) PinNote(id string) error {
 		return fmt.Errorf("pinning note: %w", err)
 	}
 	if rows, _ := res.RowsAffected(); rows == 0 {
-		return fmt.Errorf("note %q not found", id)
+		return fmt.Errorf("note %q: %w", id, ErrNoteNotFound)
 	}
 	return nil
 }
@@ -273,20 +295,25 @@ func (s *Store) UnpinNote(id string) error {
 		return fmt.Errorf("unpinning note: %w", err)
 	}
 	if rows, _ := res.RowsAffected(); rows == 0 {
-		return fmt.Errorf("note %q not found", id)
+		return fmt.Errorf("note %q: %w", id, ErrNoteNotFound)
 	}
 	return nil
 }
 
 func (s *Store) TogglePin(id string) (pinned bool, err error) {
-	note, err := s.GetNote(id)
+	now := time.Now().UTC().Format(time.RFC3339)
+	var newPinned int
+	err = s.db.QueryRow(
+		"UPDATE notes SET pinned = CASE WHEN pinned = 0 THEN 1 ELSE 0 END, updated_at = ? WHERE id = ? RETURNING pinned",
+		now, id,
+	).Scan(&newPinned)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, fmt.Errorf("note %q: %w", id, ErrNoteNotFound)
+	}
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("toggling pin: %w", err)
 	}
-	if note.Pinned {
-		return false, s.UnpinNote(id)
-	}
-	return true, s.PinNote(id)
+	return newPinned != 0, nil
 }
 
 // syncFTS upserts the FTS entry for a note. Call within a transaction.

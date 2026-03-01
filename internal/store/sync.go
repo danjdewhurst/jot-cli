@@ -105,19 +105,24 @@ func (s *Store) UpsertNote(n model.Note) error {
 	if n.Archived {
 		archivedInt = 1
 	}
+	pinnedInt := 0
+	if n.Pinned {
+		pinnedInt = 1
+	}
 
 	_, err = tx.Exec(`
-		INSERT INTO notes (id, title, body, created_at, updated_at, archived)
-		VALUES (?, ?, ?, ?, ?, ?)
+		INSERT INTO notes (id, title, body, created_at, updated_at, archived, pinned)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			title = excluded.title,
 			body = excluded.body,
 			created_at = excluded.created_at,
 			updated_at = excluded.updated_at,
-			archived = excluded.archived`,
+			archived = excluded.archived,
+			pinned = excluded.pinned`,
 		n.ID, n.Title, n.Body,
 		n.CreatedAt.Format(time.RFC3339), n.UpdatedAt.Format(time.RFC3339),
-		archivedInt,
+		archivedInt, pinnedInt,
 	)
 	if err != nil {
 		return fmt.Errorf("upserting note: %w", err)

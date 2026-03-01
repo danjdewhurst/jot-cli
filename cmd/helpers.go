@@ -5,8 +5,71 @@ import (
 	"strings"
 	"time"
 
+	"github.com/danjdewhurst/jot-cli/internal/context"
 	"github.com/danjdewhurst/jot-cli/internal/model"
+	"github.com/spf13/cobra"
 )
+
+// maxStdinSize is the maximum number of bytes read from stdin (1 MiB).
+const maxStdinSize = 1 << 20
+
+// parseTags reads the --tag flag from the command and parses each value
+// into a model.Tag.
+func parseTags(cmd *cobra.Command) ([]model.Tag, error) {
+	tagStrs, _ := cmd.Flags().GetStringSlice("tag")
+	var tags []model.Tag
+	for _, s := range tagStrs {
+		t, err := model.ParseTag(s)
+		if err != nil {
+			return nil, err
+		}
+		tags = append(tags, t)
+	}
+	return tags, nil
+}
+
+// buildNoteFilter constructs a NoteFilter from common flags shared by
+// the list and log commands (--tag, --folder, --repo, --branch, --archived,
+// --pinned, --limit).
+func buildNoteFilter(cmd *cobra.Command) (model.NoteFilter, error) {
+	filter := model.NoteFilter{}
+
+	tags, err := parseTags(cmd)
+	if err != nil {
+		return filter, err
+	}
+	filter.Tags = tags
+
+	if f, _ := cmd.Flags().GetBool("folder"); f {
+		if folder, err := context.DetectFolder(); err == nil && folder != "" {
+			filter.Tags = append(filter.Tags, model.Tag{Key: "folder", Value: folder})
+		}
+	}
+	if r, _ := cmd.Flags().GetBool("repo"); r {
+		if repo, err := context.DetectRepo(); err == nil && repo != "" {
+			filter.Tags = append(filter.Tags, model.Tag{Key: "git_repo", Value: repo})
+		}
+	}
+	if b, _ := cmd.Flags().GetBool("branch"); b {
+		if branch, err := context.DetectBranch(); err == nil && branch != "" {
+			filter.Tags = append(filter.Tags, model.Tag{Key: "git_branch", Value: branch})
+		}
+	}
+
+	archived, _ := cmd.Flags().GetBool("archived")
+	filter.Archived = archived
+
+	if cmd.Flags().Lookup("pinned") != nil {
+		if pinned, _ := cmd.Flags().GetBool("pinned"); pinned {
+			filter.PinnedOnly = true
+		}
+	}
+
+	limit, _ := cmd.Flags().GetInt("limit")
+	filter.Limit = limit
+
+	return filter, nil
+}
 
 // resolveNote finds a note by full or prefix ID.
 func resolveNote(idOrPrefix string) (model.Note, error) {

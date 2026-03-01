@@ -22,11 +22,14 @@ var addCmd = &cobra.Command{
 		body, _ := cmd.Flags().GetString("message")
 		noContext, _ := cmd.Flags().GetBool("no-context")
 
-		// Read from stdin if piped
+		// Read from stdin if piped (capped at 1 MiB)
 		if body == "" && !term.IsTerminal(int(os.Stdin.Fd())) {
-			data, err := io.ReadAll(os.Stdin)
+			data, err := io.ReadAll(io.LimitReader(os.Stdin, maxStdinSize+1))
 			if err != nil {
 				return fmt.Errorf("reading stdin: %w", err)
+			}
+			if len(data) > maxStdinSize {
+				return fmt.Errorf("stdin input exceeds maximum size of %d bytes", maxStdinSize)
 			}
 			body = strings.TrimSpace(string(data))
 		}
@@ -58,14 +61,11 @@ var addCmd = &cobra.Command{
 		}
 
 		// Add user-specified tags
-		tagStrs, _ := cmd.Flags().GetStringSlice("tag")
-		for _, ts := range tagStrs {
-			t, err := model.ParseTag(ts)
-			if err != nil {
-				return err
-			}
-			tags = append(tags, t)
+		userTags, err := parseTags(cmd)
+		if err != nil {
+			return err
 		}
+		tags = append(tags, userTags...)
 
 		note, err := db.CreateNote(title, body, tags)
 		if err != nil {

@@ -116,7 +116,7 @@ func TestNoteLog_LongBody(t *testing.T) {
 	render.NoteLog(&buf, notes)
 	out := buf.String()
 
-	if !strings.Contains(out, "...") {
+	if !strings.Contains(out, "…") {
 		t.Error("expected truncation ellipsis for long body")
 	}
 }

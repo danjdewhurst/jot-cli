@@ -1,6 +1,7 @@
 package store_test
 
 import (
+	"errors"
 	"path/filepath"
 	"testing"
 	"time"
@@ -436,6 +437,110 @@ func TestListNotes_SinceAndUntil(t *testing.T) {
 	}
 	if len(notes) != 0 {
 		t.Errorf("got %d notes, want 0", len(notes))
+	}
+}
+
+func TestForeignKeysEnabled(t *testing.T) {
+	s := newTestStore(t)
+
+	// Foreign keys should be ON — deleting a note should cascade-delete its tags
+	note, err := s.CreateNote("FK Test", "body", []model.Tag{{Key: "project", Value: "test"}})
+	if err != nil {
+		t.Fatalf("creating note: %v", err)
+	}
+
+	tags, _ := s.ListTags("")
+	if len(tags) == 0 {
+		t.Fatal("expected at least one tag after create")
+	}
+
+	if err := s.DeleteNote(note.ID); err != nil {
+		t.Fatalf("deleting note: %v", err)
+	}
+
+	// Tags should be cascade-deleted if foreign_keys is ON
+	tags, err = s.ListTags("")
+	if err != nil {
+		t.Fatalf("listing tags: %v", err)
+	}
+	if len(tags) != 0 {
+		t.Errorf("got %d tags after delete, want 0 (foreign key cascade should have removed them)", len(tags))
+	}
+}
+
+func TestDeleteNoteClearsFTS(t *testing.T) {
+	s := newTestStore(t)
+
+	note, _ := s.CreateNote("Searchable Title", "unique searchable body content", nil)
+
+	if err := s.DeleteNote(note.ID); err != nil {
+		t.Fatalf("deleting note: %v", err)
+	}
+
+	results, err := s.Search("searchable", nil)
+	if err != nil {
+		t.Fatalf("searching after delete: %v", err)
+	}
+	if len(results) != 0 {
+		t.Errorf("got %d search results after delete, want 0", len(results))
+	}
+}
+
+func TestUpdateNoteKeepsFTSInSync(t *testing.T) {
+	s := newTestStore(t)
+
+	note, _ := s.CreateNote("Original Title", "original body content", nil)
+
+	_, err := s.UpdateNote(note.ID, "Updated Title", "completely new body")
+	if err != nil {
+		t.Fatalf("updating note: %v", err)
+	}
+
+	// Old content should not match
+	results, err := s.Search("original", nil)
+	if err != nil {
+		t.Fatalf("searching for old content: %v", err)
+	}
+	if len(results) != 0 {
+		t.Errorf("got %d results for old content, want 0", len(results))
+	}
+
+	// New content should match
+	results, err = s.Search("completely new", nil)
+	if err != nil {
+		t.Fatalf("searching for new content: %v", err)
+	}
+	if len(results) != 1 {
+		t.Errorf("got %d results for new content, want 1", len(results))
+	}
+}
+
+func TestErrNoteNotFound(t *testing.T) {
+	s := newTestStore(t)
+
+	_, err := s.GetNote("nonexistent")
+	if !errors.Is(err, store.ErrNoteNotFound) {
+		t.Errorf("GetNote error = %v, want ErrNoteNotFound", err)
+	}
+
+	_, err = s.UpdateNote("nonexistent", "t", "b")
+	if !errors.Is(err, store.ErrNoteNotFound) {
+		t.Errorf("UpdateNote error = %v, want ErrNoteNotFound", err)
+	}
+
+	err = s.DeleteNote("nonexistent")
+	if !errors.Is(err, store.ErrNoteNotFound) {
+		t.Errorf("DeleteNote error = %v, want ErrNoteNotFound", err)
+	}
+
+	err = s.PinNote("nonexistent")
+	if !errors.Is(err, store.ErrNoteNotFound) {
+		t.Errorf("PinNote error = %v, want ErrNoteNotFound", err)
+	}
+
+	_, err = s.TogglePin("nonexistent")
+	if !errors.Is(err, store.ErrNoteNotFound) {
+		t.Errorf("TogglePin error = %v, want ErrNoteNotFound", err)
 	}
 }
 

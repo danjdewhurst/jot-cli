@@ -2,9 +2,11 @@ package tui
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/danjdewhurst/jot-cli/internal/context"
 	"github.com/danjdewhurst/jot-cli/internal/model"
 	"github.com/danjdewhurst/jot-cli/internal/store"
@@ -65,6 +67,15 @@ type searchResultsMsg struct {
 
 type statusMsg string
 
+type clearStatusMsg struct{}
+
+// clearStatusAfter returns a tea.Cmd that clears the status message after a delay.
+func clearStatusAfter(d time.Duration) tea.Cmd {
+	return tea.Tick(d, func(_ time.Time) tea.Msg {
+		return clearStatusMsg{}
+	})
+}
+
 func loadNotes(s *store.Store, contextFilter bool) tea.Cmd {
 	return func() tea.Msg {
 		filter := model.NoteFilter{}
@@ -124,16 +135,16 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case noteCreatedMsg:
 		a.statusMsg = fmt.Sprintf("Created: %s", msg.note.Title)
 		a.popView()
-		return a, loadNotes(a.store, a.contextFilter)
+		return a, tea.Batch(loadNotes(a.store, a.contextFilter), clearStatusAfter(3*time.Second))
 
 	case noteUpdatedMsg:
 		a.statusMsg = fmt.Sprintf("Updated: %s", msg.note.Title)
 		a.popView()
-		return a, loadNotes(a.store, a.contextFilter)
+		return a, tea.Batch(loadNotes(a.store, a.contextFilter), clearStatusAfter(3*time.Second))
 
 	case noteArchivedMsg:
 		a.statusMsg = "Note archived"
-		return a, loadNotes(a.store, a.contextFilter)
+		return a, tea.Batch(loadNotes(a.store, a.contextFilter), clearStatusAfter(3*time.Second))
 
 	case notePinnedMsg:
 		if msg.pinned {
@@ -141,7 +152,7 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			a.statusMsg = "Note unpinned"
 		}
-		return a, loadNotes(a.store, a.contextFilter)
+		return a, tea.Batch(loadNotes(a.store, a.contextFilter), clearStatusAfter(3*time.Second))
 
 	case searchResultsMsg:
 		var notes []model.Note
@@ -153,6 +164,10 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case statusMsg:
 		a.statusMsg = string(msg)
+		return a, clearStatusAfter(3 * time.Second)
+
+	case clearStatusMsg:
+		a.statusMsg = ""
 		return a, nil
 	}
 
@@ -243,7 +258,7 @@ func (a *App) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				a.statusMsg = "Context filter: off"
 			}
-			return a, loadNotes(a.store, a.contextFilter)
+			return a, tea.Batch(loadNotes(a.store, a.contextFilter), clearStatusAfter(3*time.Second))
 		}
 	}
 	a.list.Update(msg)
@@ -286,8 +301,8 @@ func (a *App) updateCompose(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	}
-	a.compose.Update(msg)
-	return a, nil
+	cmd := a.compose.Update(msg)
+	return a, cmd
 }
 
 func (a *App) updateSearch(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -301,20 +316,21 @@ func (a *App) updateSearch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	a.search.Update(msg)
+	inputCmd := a.search.Update(msg)
 
 	// Trigger search on query change
 	if q := a.search.Query(); q != "" {
 		s := a.store
-		return a, func() tea.Msg {
+		searchCmd := func() tea.Msg {
 			results, err := s.Search(q, nil)
 			if err != nil {
 				return statusMsg(fmt.Sprintf("Search error: %v", err))
 			}
 			return searchResultsMsg{results: results}
 		}
+		return a, tea.Batch(inputCmd, searchCmd)
 	}
-	return a, nil
+	return a, inputCmd
 }
 
 func (a App) View() string {
@@ -352,7 +368,7 @@ func (a App) renderStatusBar() string {
 		right = "esc:back"
 	}
 
-	gap := a.width - len(left) - len(right)
+	gap := a.width - lipgloss.Width(left) - lipgloss.Width(right)
 	if gap < 1 {
 		gap = 1
 	}

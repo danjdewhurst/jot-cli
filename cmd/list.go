@@ -3,8 +3,6 @@ package cmd
 import (
 	"os"
 
-	"github.com/danjdewhurst/jot-cli/internal/context"
-	"github.com/danjdewhurst/jot-cli/internal/model"
 	"github.com/danjdewhurst/jot-cli/internal/render"
 	"github.com/spf13/cobra"
 )
@@ -14,42 +12,10 @@ var listCmd = &cobra.Command{
 	Aliases: []string{"ls"},
 	Short:   "List notes",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		filter := model.NoteFilter{}
-
-		tagStrs, _ := cmd.Flags().GetStringSlice("tag")
-		for _, ts := range tagStrs {
-			t, err := model.ParseTag(ts)
-			if err != nil {
-				return err
-			}
-			filter.Tags = append(filter.Tags, t)
+		filter, err := buildNoteFilter(cmd)
+		if err != nil {
+			return err
 		}
-
-		if f, _ := cmd.Flags().GetBool("folder"); f {
-			if folder, err := context.DetectFolder(); err == nil && folder != "" {
-				filter.Tags = append(filter.Tags, model.Tag{Key: "folder", Value: folder})
-			}
-		}
-		if r, _ := cmd.Flags().GetBool("repo"); r {
-			if repo, err := context.DetectRepo(); err == nil && repo != "" {
-				filter.Tags = append(filter.Tags, model.Tag{Key: "git_repo", Value: repo})
-			}
-		}
-		if b, _ := cmd.Flags().GetBool("branch"); b {
-			if branch, err := context.DetectBranch(); err == nil && branch != "" {
-				filter.Tags = append(filter.Tags, model.Tag{Key: "git_branch", Value: branch})
-			}
-		}
-
-		archived, _ := cmd.Flags().GetBool("archived")
-		filter.Archived = archived
-
-		if pinned, _ := cmd.Flags().GetBool("pinned"); pinned {
-			filter.PinnedOnly = true
-		}
-
-		limit, _ := cmd.Flags().GetInt("limit")
-		filter.Limit = limit
 
 		notes, err := db.ListNotes(filter)
 		if err != nil {

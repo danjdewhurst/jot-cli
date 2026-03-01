@@ -52,12 +52,12 @@ func (s *Syncer) Sync() (SyncResult, error) {
 	}
 	defer lock.release()
 
-	pushed, err := s.Push()
+	pushed, err := s.push()
 	if err != nil {
 		return SyncResult{}, fmt.Errorf("push: %w", err)
 	}
 
-	pulled, conflicts, err := s.Pull()
+	pulled, conflicts, err := s.pull()
 	if err != nil {
 		return SyncResult{}, fmt.Errorf("pull: %w", err)
 	}

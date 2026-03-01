@@ -118,12 +118,14 @@ func parseOriginURL(configPath string) string {
 }
 
 func repoNameFromURL(rawURL string) string {
-	// Handle SSH: git@github.com:user/repo.git
-	if _, after, ok := strings.Cut(rawURL, ":"); ok && !strings.HasPrefix(rawURL, "http") {
-		return strings.TrimSuffix(after, ".git")
+	// SCP-style SSH: git@github.com:user/repo.git (no :// prefix)
+	if !strings.Contains(rawURL, "://") {
+		if _, after, ok := strings.Cut(rawURL, ":"); ok {
+			return strings.TrimSuffix(after, ".git")
+		}
 	}
 
-	// Handle HTTPS: https://github.com/user/repo.git
+	// Protocol URLs (https://, ssh://, git://) — split on "/"
 	rawURL = strings.TrimSuffix(rawURL, ".git")
 	parts := strings.Split(rawURL, "/")
 	if len(parts) >= 2 {

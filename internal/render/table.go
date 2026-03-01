@@ -2,9 +2,9 @@ package render
 
 import (
 	"fmt"
+	"time"
 	"io"
 	"strings"
-	"time"
 
 	"github.com/danjdewhurst/jot-cli/internal/model"
 )
@@ -36,7 +36,7 @@ func NoteTable(w io.Writer, notes []model.Note) {
 		_, _ = fmt.Fprintf(w, "%-28s  %-40s  %-12s  %s\n",
 			shortID(n.ID),
 			title,
-			relativeTime(n.CreatedAt),
+			RelativeTime(n.CreatedAt),
 			strings.Join(tagStrs, ", "),
 		)
 	}
@@ -85,22 +85,3 @@ func shortID(id string) string {
 	return id
 }
 
-func relativeTime(t time.Time) string {
-	d := time.Since(t)
-	switch {
-	case d < time.Minute:
-		return "just now"
-	case d < time.Hour:
-		m := int(d.Minutes())
-		return fmt.Sprintf("%dm ago", m)
-	case d < 24*time.Hour:
-		h := int(d.Hours())
-		return fmt.Sprintf("%dh ago", h)
-	case d < 30*24*time.Hour:
-		days := int(d.Hours() / 24)
-		return fmt.Sprintf("%dd ago", days)
-	default:
-		months := int(d.Hours() / 24 / 30)
-		return fmt.Sprintf("%dmo ago", months)
-	}
-}

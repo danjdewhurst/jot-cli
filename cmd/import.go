@@ -34,16 +34,10 @@ func runImport(cmd *cobra.Command, args []string) error {
 	dryRun, _ := cmd.Flags().GetBool("dry-run")
 	newIDs, _ := cmd.Flags().GetBool("new-ids")
 	noContext, _ := cmd.Flags().GetBool("no-context")
-	tagStrs, _ := cmd.Flags().GetStringSlice("tag")
-
 	// Parse extra tags
-	var extraTags []model.Tag
-	for _, s := range tagStrs {
-		t, err := model.ParseTag(s)
-		if err != nil {
-			return err
-		}
-		extraTags = append(extraTags, t)
+	extraTags, err := parseTags(cmd)
+	if err != nil {
+		return err
 	}
 
 	// Read input

@@ -3,10 +3,10 @@ package views
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/danjdewhurst/jot-cli/internal/model"
+	"github.com/danjdewhurst/jot-cli/internal/render"
 	"github.com/danjdewhurst/jot-cli/internal/tui/theme"
 )
 
@@ -48,6 +48,9 @@ func (l *ListView) SelectedNote() (model.Note, bool) {
 
 func (l *ListView) Update(msg tea.Msg) {
 	if kmsg, ok := msg.(tea.KeyMsg); ok {
+		if len(l.notes) == 0 {
+			return
+		}
 		switch kmsg.String() {
 		case "up", "k":
 			if l.cursor > 0 {
@@ -120,7 +123,7 @@ func (l ListView) View() string {
 		n := l.notes[i]
 		title := n.Title
 		if title == "" {
-			title = truncate(n.Body, titleWidth)
+			title = render.Truncate(n.Body, titleWidth)
 		}
 		if title == "" {
 			title = "(empty)"
@@ -131,7 +134,7 @@ func (l ListView) View() string {
 			pin = theme.ListPin.Render("♦ ")
 		}
 
-		age := relativeTime(n.CreatedAt)
+		age := render.RelativeTimeShort(n.CreatedAt)
 		var tagParts []string
 		for _, t := range n.Tags {
 			tagParts = append(tagParts, t.String())
@@ -142,11 +145,11 @@ func (l ListView) View() string {
 
 		if i == l.cursor {
 			cursor := theme.ListCursor.Render("▸")
-			row := fmt.Sprintf("%s %s"+titleFmt+"  %s  %s", cursor, pin, truncate(title, titleWidth), age, tags)
+			row := fmt.Sprintf("%s %s"+titleFmt+"  %s  %s", cursor, pin, render.Truncate(title, titleWidth), age, tags)
 			line := theme.ListSelected.Width(l.width).Render(row)
 			b.WriteString(line)
 		} else {
-			line := fmt.Sprintf("  %s"+titleFmt+"  %s  %s", pin, truncate(title, titleWidth), theme.ListDim.Render(age), theme.ListTag.Render(tags))
+			line := fmt.Sprintf("  %s"+titleFmt+"  %s  %s", pin, render.Truncate(title, titleWidth), theme.ListDim.Render(age), theme.ListTag.Render(tags))
 			b.WriteString(line)
 		}
 
@@ -158,26 +161,3 @@ func (l ListView) View() string {
 	return b.String()
 }
 
-func truncate(s string, max int) string {
-	s = strings.ReplaceAll(s, "\n", " ")
-	if len(s) > max {
-		return s[:max-1] + "…"
-	}
-	return s
-}
-
-func relativeTime(t time.Time) string {
-	d := time.Since(t)
-	switch {
-	case d < time.Minute:
-		return "now"
-	case d < time.Hour:
-		return fmt.Sprintf("%dm", int(d.Minutes()))
-	case d < 24*time.Hour:
-		return fmt.Sprintf("%dh", int(d.Hours()))
-	case d < 30*24*time.Hour:
-		return fmt.Sprintf("%dd", int(d.Hours()/24))
-	default:
-		return fmt.Sprintf("%dmo", int(d.Hours()/24/30))
-	}
-}

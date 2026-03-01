@@ -16,14 +16,9 @@ var searchCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		query := strings.Join(args, " ")
 
-		var tags []model.Tag
-		tagStrs, _ := cmd.Flags().GetStringSlice("tag")
-		for _, ts := range tagStrs {
-			t, err := model.ParseTag(ts)
-			if err != nil {
-				return err
-			}
-			tags = append(tags, t)
+		tags, err := parseTags(cmd)
+		if err != nil {
+			return err
 		}
 
 		results, err := db.Search(query, tags)

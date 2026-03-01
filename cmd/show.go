@@ -27,6 +27,5 @@ var showCmd = &cobra.Command{
 }
 
 func init() {
-	showCmd.Flags().Bool("raw", false, "Show raw markdown without rendering")
 	rootCmd.AddCommand(showCmd)
 }

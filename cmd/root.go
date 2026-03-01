@@ -24,7 +24,18 @@ var rootCmd = &cobra.Command{
 	Short: "A CLI-first notes app",
 	Long:  "jot-cli is a fast, context-aware notes tool for the terminal.",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		cfg = config.Load()
+		// Apply JOT_JSON env var only if the --json flag was not explicitly set
+		if !cmd.Flags().Changed("json") {
+			if v := os.Getenv("JOT_JSON"); v == "1" || v == "true" {
+				flagJSON = true
+			}
+		}
+
+		var cfgErr error
+		cfg, cfgErr = config.Load()
+		if cfgErr != nil {
+			return fmt.Errorf("loading config: %w", cfgErr)
+		}
 		if flagDB != "" {
 			cfg.DBPath = flagDB
 		}
@@ -49,9 +60,9 @@ var rootCmd = &cobra.Command{
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if term.IsTerminal(int(os.Stdin.Fd())) {
-			return tuiCmd.RunE(cmd, args)
+			return tuiCmd.RunE(tuiCmd, args)
 		}
-		return listCmd.RunE(cmd, args)
+		return listCmd.RunE(listCmd, args)
 	},
 }
 
@@ -63,8 +74,4 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&flagJSON, "json", false, "Output as JSON")
 	rootCmd.PersistentFlags().StringVar(&flagDB, "db", "", "Database path")
 	rootCmd.PersistentFlags().BoolVar(&flagVerbose, "verbose", false, "Verbose output")
-
-	if v := os.Getenv("JOT_JSON"); v == "1" || v == "true" {
-		flagJSON = true
-	}
 }

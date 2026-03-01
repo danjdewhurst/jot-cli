@@ -86,7 +86,7 @@ func (c *ComposeView) SetSize(w, h int) {
 	c.bodyIn.SetHeight(h - 6)
 }
 
-func (c *ComposeView) Update(msg tea.Msg) {
+func (c *ComposeView) Update(msg tea.Msg) tea.Cmd {
 	if kmsg, ok := msg.(tea.KeyMsg); ok {
 		if kmsg.String() == "tab" {
 			c.focusBody = !c.focusBody
@@ -97,19 +97,17 @@ func (c *ComposeView) Update(msg tea.Msg) {
 				c.bodyIn.Blur()
 				c.titleIn.Focus()
 			}
-			return
+			return nil
 		}
 	}
 
+	var cmd tea.Cmd
 	if c.focusBody {
-		var cmd tea.Cmd
 		c.bodyIn, cmd = c.bodyIn.Update(msg)
-		_ = cmd
 	} else {
-		var cmd tea.Cmd
 		c.titleIn, cmd = c.titleIn.Update(msg)
-		_ = cmd
 	}
+	return cmd
 }
 
 func (c ComposeView) View() string {

@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/danjdewhurst/jot-cli/internal/model"
+	"github.com/danjdewhurst/jot-cli/internal/render"
 	"github.com/danjdewhurst/jot-cli/internal/tui/theme"
 )
 
@@ -67,25 +68,25 @@ func (s *SearchView) SelectedNote() (model.Note, bool) {
 	return model.Note{}, false
 }
 
-func (s *SearchView) Update(msg tea.Msg) {
+func (s *SearchView) Update(msg tea.Msg) tea.Cmd {
 	if kmsg, ok := msg.(tea.KeyMsg); ok {
 		switch kmsg.String() {
 		case "up", "ctrl+p":
 			if s.cursor > 0 {
 				s.cursor--
 			}
-			return
+			return nil
 		case "down", "ctrl+n":
 			if s.cursor < len(s.results)-1 {
 				s.cursor++
 			}
-			return
+			return nil
 		}
 	}
 
 	var cmd tea.Cmd
 	s.input, cmd = s.input.Update(msg)
-	_ = cmd
+	return cmd
 }
 
 func (s SearchView) View() string {
@@ -108,7 +109,7 @@ func (s SearchView) View() string {
 	for i, n := range s.results {
 		title := n.Title
 		if title == "" {
-			title = truncate(n.Body, 50)
+			title = render.Truncate(n.Body, 50)
 		}
 
 		if i == s.cursor {

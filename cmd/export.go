@@ -33,7 +33,6 @@ func runExport(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("unsupported format %q (use json or md)", format)
 	}
 
-	tagStrs, _ := cmd.Flags().GetStringSlice("tag")
 	archived, _ := cmd.Flags().GetBool("archived")
 	search, _ := cmd.Flags().GetString("search")
 	sinceStr, _ := cmd.Flags().GetString("since")
@@ -41,13 +40,9 @@ func runExport(cmd *cobra.Command, args []string) error {
 	output, _ := cmd.Flags().GetString("output")
 
 	// Parse tags
-	var tags []model.Tag
-	for _, s := range tagStrs {
-		t, err := model.ParseTag(s)
-		if err != nil {
-			return err
-		}
-		tags = append(tags, t)
+	tags, err := parseTags(cmd)
+	if err != nil {
+		return err
 	}
 
 	// Parse date filters
@@ -68,6 +63,10 @@ func runExport(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("searching notes: %w", err)
 		}
 		for _, r := range results {
+			// Filter out archived notes unless --archived is set
+			if !archived && r.Note.Archived {
+				continue
+			}
 			notes = append(notes, r.Note)
 		}
 	} else {

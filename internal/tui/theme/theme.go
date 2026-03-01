@@ -110,6 +110,26 @@ var (
 			Foreground(Lavender)
 )
 
+// ── Log renderer ───────────────────────────────────────────────────────
+
+var (
+	LogHash = lipgloss.NewStyle().
+		Foreground(Yellow)
+
+	LogTimestamp = lipgloss.NewStyle().
+			Foreground(Overlay0)
+
+	LogTitle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(Text)
+
+	LogTagKey = lipgloss.NewStyle().
+			Foreground(Overlay1)
+
+	LogTagValue = lipgloss.NewStyle().
+			Foreground(Blue)
+)
+
 // ── Help view ───────────────────────────────────────────────────────────
 
 var (

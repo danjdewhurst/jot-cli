@@ -1,10 +1,9 @@
 package cmd
 
 import (
+	"fmt"
 	"time"
 
-	"github.com/danjdewhurst/jot-cli/internal/context"
-	"github.com/danjdewhurst/jot-cli/internal/model"
 	"github.com/danjdewhurst/jot-cli/internal/render"
 	"github.com/spf13/cobra"
 )
@@ -17,42 +16,15 @@ var logCmd = &cobra.Command{
 }
 
 func runLog(cmd *cobra.Command, args []string) error {
-	filter := model.NoteFilter{}
-
-	tagStrs, _ := cmd.Flags().GetStringSlice("tag")
-	for _, ts := range tagStrs {
-		t, err := model.ParseTag(ts)
-		if err != nil {
-			return err
-		}
-		filter.Tags = append(filter.Tags, t)
+	filter, err := buildNoteFilter(cmd)
+	if err != nil {
+		return err
 	}
-
-	if f, _ := cmd.Flags().GetBool("folder"); f {
-		if folder, err := context.DetectFolder(); err == nil && folder != "" {
-			filter.Tags = append(filter.Tags, model.Tag{Key: "folder", Value: folder})
-		}
-	}
-	if r, _ := cmd.Flags().GetBool("repo"); r {
-		if repo, err := context.DetectRepo(); err == nil && repo != "" {
-			filter.Tags = append(filter.Tags, model.Tag{Key: "git_repo", Value: repo})
-		}
-	}
-	if b, _ := cmd.Flags().GetBool("branch"); b {
-		if branch, err := context.DetectBranch(); err == nil && branch != "" {
-			filter.Tags = append(filter.Tags, model.Tag{Key: "git_branch", Value: branch})
-		}
-	}
-
-	archived, _ := cmd.Flags().GetBool("archived")
-	filter.Archived = archived
 
 	// Default limit of 20 for log
-	limit, _ := cmd.Flags().GetInt("limit")
 	if !cmd.Flags().Changed("limit") {
-		limit = 20
+		filter.Limit = 20
 	}
-	filter.Limit = limit
 
 	// --since / --until
 	sinceStr, _ := cmd.Flags().GetString("since")
@@ -73,8 +45,11 @@ func runLog(cmd *cobra.Command, args []string) error {
 		filter.Until = &t
 	}
 
-	// --today shorthand
+	// --today shorthand — conflicts with --since/--until
 	if today, _ := cmd.Flags().GetBool("today"); today {
+		if cmd.Flags().Changed("since") || cmd.Flags().Changed("until") {
+			return fmt.Errorf("--today cannot be combined with --since or --until")
+		}
 		now := time.Now()
 		startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 		filter.Since = &startOfDay

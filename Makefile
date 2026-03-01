@@ -20,6 +20,7 @@ INSTALL_DIR := $(HOME)/.local/bin
 
 install: build
 	mkdir -p $(INSTALL_DIR)
+	rm -f $(INSTALL_DIR)/jot-cli
 	cp $(BIN) $(INSTALL_DIR)/jot-cli
 	ln -sf jot-cli $(INSTALL_DIR)/j
 	@echo "Installed jot-cli and j to $(INSTALL_DIR)"

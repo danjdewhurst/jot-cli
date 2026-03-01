@@ -15,6 +15,18 @@ func (s *Syncer) Push() (int, error) {
 		return 0, fmt.Errorf("creating sync directory: %w", err)
 	}
 
+	lock, err := acquireLock(s.syncDir)
+	if err != nil {
+		return 0, err
+	}
+	defer lock.release()
+
+	return s.push()
+}
+
+// push is the internal implementation without locking.
+func (s *Syncer) push() (int, error) {
+
 	entries, err := s.store.UnsyncedChanges()
 	if err != nil {
 		return 0, err
@@ -67,21 +79,35 @@ func (s *Syncer) Push() (int, error) {
 	filename := fmt.Sprintf("%s_%s.ndjson", mid, now.Format(time.RFC3339))
 	path := filepath.Join(s.syncDir, "changesets", filename)
 
-	f, err := os.Create(path)
+	// Write to a temporary file, fsync, then atomically rename to avoid
+	// corrupt changesets if the process crashes mid-write.
+	tmpPath := path + ".tmp"
+	f, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
 	if err != nil {
-		return 0, fmt.Errorf("creating changeset file: %w", err)
+		return 0, fmt.Errorf("creating changeset temp file: %w", err)
 	}
-	defer f.Close() //nolint:errcheck
 
 	enc := json.NewEncoder(f)
 	for _, ce := range deduped {
 		if err := enc.Encode(ce); err != nil {
+			_ = f.Close()
+			_ = os.Remove(tmpPath)
 			return 0, fmt.Errorf("writing changeset entry: %w", err)
 		}
 	}
 
+	if err := f.Sync(); err != nil {
+		_ = f.Close()
+		_ = os.Remove(tmpPath)
+		return 0, fmt.Errorf("syncing changeset file: %w", err)
+	}
 	if err := f.Close(); err != nil {
+		_ = os.Remove(tmpPath)
 		return 0, fmt.Errorf("closing changeset file: %w", err)
+	}
+	if err := os.Rename(tmpPath, path); err != nil {
+		_ = os.Remove(tmpPath)
+		return 0, fmt.Errorf("renaming changeset file: %w", err)
 	}
 
 	// Mark all processed changelog entries as synced.

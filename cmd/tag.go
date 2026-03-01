@@ -54,7 +54,10 @@ var tagAddCmd = &cobra.Command{
 		}
 
 		if flagJSON {
-			updated, _ := db.GetNote(note.ID)
+			updated, err := db.GetNote(note.ID)
+			if err != nil {
+				return fmt.Errorf("retrieving updated note: %w", err)
+			}
 			return render.JSON(os.Stdout, updated)
 		}
 
@@ -83,7 +86,10 @@ var tagRmCmd = &cobra.Command{
 		}
 
 		if flagJSON {
-			updated, _ := db.GetNote(note.ID)
+			updated, err := db.GetNote(note.ID)
+			if err != nil {
+				return fmt.Errorf("retrieving updated note: %w", err)
+			}
 			return render.JSON(os.Stdout, updated)
 		}
 

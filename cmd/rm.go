@@ -26,7 +26,7 @@ var rmCmd = &cobra.Command{
 				return fmt.Errorf("use --force to permanently delete note %s", note.ID)
 			}
 			if err := db.DeleteNote(note.ID); err != nil {
-				return err
+				return fmt.Errorf("deleting note: %w", err)
 			}
 			if flagJSON {
 				return render.JSON(os.Stdout, map[string]string{"deleted": note.ID})
@@ -34,7 +34,7 @@ var rmCmd = &cobra.Command{
 			fmt.Fprintf(os.Stderr, "Deleted note %s\n", note.ID)
 		} else {
 			if err := db.ArchiveNote(note.ID); err != nil {
-				return err
+				return fmt.Errorf("archiving note: %w", err)
 			}
 			if flagJSON {
 				return render.JSON(os.Stdout, map[string]string{"archived": note.ID})

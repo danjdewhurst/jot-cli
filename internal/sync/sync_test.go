@@ -1,8 +1,12 @@
 package sync_test
 
 import (
+	"crypto/sha256"
+	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -466,4 +470,174 @@ func syncDirFromSyncer(t *testing.T, syncer *jsync.Syncer) string {
 	// The sync dir is always <tempDir>/sync but each syncer gets its own tempDir.
 	// We need to expose the sync dir. Let me use a different approach.
 	return syncer.SyncDir()
+}
+
+// TestPushAtomicWrite verifies that changeset files are written atomically:
+// no partial/corrupt files should remain if the write succeeds, and the
+// final file should have restrictive permissions (0600).
+func TestPushAtomicWrite(t *testing.T) {
+	syncer, st := newTestSyncer(t)
+
+	_, err := st.CreateNote("Atomic Test", "body content", nil)
+	if err != nil {
+		t.Fatalf("creating note: %v", err)
+	}
+
+	pushed, err := syncer.Push()
+	if err != nil {
+		t.Fatalf("push: %v", err)
+	}
+	if pushed != 1 {
+		t.Fatalf("pushed = %d, want 1", pushed)
+	}
+
+	changesetsDir := filepath.Join(syncer.SyncDir(), "changesets")
+	entries, err := os.ReadDir(changesetsDir)
+	if err != nil {
+		t.Fatalf("reading changesets dir: %v", err)
+	}
+
+	// No .tmp files should remain after a successful push.
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), ".tmp") {
+			t.Errorf("temporary file %q should not remain after successful push", e.Name())
+		}
+	}
+
+	// Find the .ndjson file and verify permissions are 0600.
+	var found bool
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), ".ndjson") {
+			found = true
+			info, err := e.Info()
+			if err != nil {
+				t.Fatalf("stat %s: %v", e.Name(), err)
+			}
+			perm := info.Mode().Perm()
+			if perm != 0o600 {
+				t.Errorf("changeset file permissions = %o, want 0600", perm)
+			}
+
+			// Verify the file is valid ndjson (not corrupt/truncated).
+			data, err := os.ReadFile(filepath.Join(changesetsDir, e.Name()))
+			if err != nil {
+				t.Fatalf("reading changeset: %v", err)
+			}
+			lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+			for i, line := range lines {
+				var ce jsync.ChangeEntry
+				if err := json.Unmarshal([]byte(line), &ce); err != nil {
+					t.Errorf("line %d is corrupt ndjson: %v", i, err)
+				}
+			}
+		}
+	}
+	if !found {
+		t.Error("no .ndjson changeset file found")
+	}
+}
+
+// TestPullLargeNoteBody verifies that notes with bodies exceeding the
+// default bufio.Scanner 64KB limit are handled correctly.
+func TestPullLargeNoteBody(t *testing.T) {
+	syncerA, stA := newTestSyncer(t)
+	syncerB, stB := newTestSyncer(t)
+
+	// Create a note with a body larger than 64KB (the default scanner limit).
+	largeBody := strings.Repeat("x", 128*1024) // 128KB
+	_, err := stA.CreateNote("Large Note", largeBody, nil)
+	if err != nil {
+		t.Fatalf("creating large note: %v", err)
+	}
+
+	if _, err := syncerA.Push(); err != nil {
+		t.Fatalf("push A: %v", err)
+	}
+
+	copyChangesets(t, syncerA, syncerB)
+
+	pulled, _, err := syncerB.Pull()
+	if err != nil {
+		t.Fatalf("pull B should handle large notes: %v", err)
+	}
+	if pulled != 1 {
+		t.Errorf("pulled = %d, want 1", pulled)
+	}
+
+	// Verify the full body was imported.
+	notes, _ := stB.ListNotes(model.NoteFilter{})
+	if len(notes) != 1 {
+		t.Fatalf("got %d notes, want 1", len(notes))
+	}
+	if len(notes[0].Body) != 128*1024 {
+		t.Errorf("body length = %d, want %d", len(notes[0].Body), 128*1024)
+	}
+
+	_ = stA // suppress unused
+}
+
+// TestPullEqualTimestampTiebreaker verifies that when local and remote notes
+// have exactly equal UpdatedAt timestamps, a deterministic tiebreaker is used
+// (body hash comparison) rather than silently keeping local.
+func TestPullEqualTimestampTiebreaker(t *testing.T) {
+	syncerA, stA := newTestSyncer(t)
+	syncerB, stB := newTestSyncer(t)
+
+	now := time.Now().UTC().Truncate(time.Second)
+	noteID := "01TESTID000000000000000EQ"
+
+	// Create local note on B with body that hashes higher.
+	localNote := model.Note{
+		ID: noteID, Title: "Local", Body: "zzz local body",
+		CreatedAt: now, UpdatedAt: now,
+	}
+	if err := stB.UpsertNote(localNote); err != nil {
+		t.Fatalf("creating local note: %v", err)
+	}
+	if err := stB.ClearChangelogForNotes([]string{noteID}); err != nil {
+		t.Fatalf("clearing changelog: %v", err)
+	}
+
+	// Create remote note on A with body that hashes lower.
+	remoteNote := model.Note{
+		ID: noteID, Title: "Remote", Body: "aaa remote body",
+		CreatedAt: now, UpdatedAt: now,
+	}
+	if err := stA.UpsertNote(remoteNote); err != nil {
+		t.Fatalf("creating remote note: %v", err)
+	}
+	if _, err := syncerA.Push(); err != nil {
+		t.Fatalf("push A: %v", err)
+	}
+
+	copyChangesets(t, syncerA, syncerB)
+
+	pulled, conflicts, err := syncerB.Pull()
+	if err != nil {
+		t.Fatalf("pull B: %v", err)
+	}
+
+	// Determine expected winner by comparing body hashes.
+	localHash := fmt.Sprintf("%x", sha256.Sum256([]byte(localNote.Body)))
+	remoteHash := fmt.Sprintf("%x", sha256.Sum256([]byte(remoteNote.Body)))
+
+	got, _ := stB.GetNote(noteID)
+
+	if localHash < remoteHash {
+		// Local hash wins (lower hash = winner).
+		if got.Title != "Local" {
+			t.Errorf("title = %q, want %q (local hash is lower, should win)", got.Title, "Local")
+		}
+		if pulled != 0 || conflicts != 1 {
+			t.Errorf("pulled=%d conflicts=%d, want pulled=0 conflicts=1", pulled, conflicts)
+		}
+	} else {
+		// Remote hash wins.
+		if got.Title != "Remote" {
+			t.Errorf("title = %q, want %q (remote hash is lower, should win)", got.Title, "Remote")
+		}
+		if pulled != 1 || conflicts != 0 {
+			t.Errorf("pulled=%d conflicts=%d, want pulled=1 conflicts=0", pulled, conflicts)
+		}
+	}
 }

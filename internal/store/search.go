@@ -57,18 +57,31 @@ func (s *Store) Search(query string, tags []model.Tag) ([]SearchResult, error) {
 		); err != nil {
 			return nil, fmt.Errorf("scanning search result: %w", err)
 		}
-		r.Note.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
-		r.Note.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+		r.Note.CreatedAt, err = time.Parse(time.RFC3339, createdAt)
+		if err != nil {
+			return nil, fmt.Errorf("parsing created_at for note %s: %w", r.Note.ID, err)
+		}
+		r.Note.UpdatedAt, err = time.Parse(time.RFC3339, updatedAt)
+		if err != nil {
+			return nil, fmt.Errorf("parsing updated_at for note %s: %w", r.Note.ID, err)
+		}
 		r.Note.Archived = archived != 0
 		r.Note.Pinned = pinned != 0
+		results = append(results, r)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
-		noteTags, err := s.getTagsForNote(r.Note.ID)
+	// Fetch tags after closing the rows cursor to avoid holding the
+	// single database connection while making additional queries.
+	for i := range results {
+		noteTags, err := s.getTagsForNote(results[i].Note.ID)
 		if err != nil {
 			return nil, err
 		}
-		r.Note.Tags = noteTags
-		results = append(results, r)
+		results[i].Note.Tags = noteTags
 	}
 
-	return results, rows.Err()
+	return results, nil
 }

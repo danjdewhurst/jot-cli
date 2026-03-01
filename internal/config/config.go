@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -10,31 +11,39 @@ type Config struct {
 	SyncDir string
 }
 
-func Load() Config {
-	return Config{
-		DBPath:  dbPath(),
-		SyncDir: syncDir(),
+func Load() (Config, error) {
+	dir, err := dataDir()
+	if err != nil {
+		return Config{}, fmt.Errorf("resolving data directory: %w", err)
 	}
+
+	return Config{
+		DBPath:  dbPath(dir),
+		SyncDir: syncDir(dir),
+	}, nil
 }
 
-func syncDir() string {
+func syncDir(dataDir string) string {
 	if p := os.Getenv("JOT_SYNC_DIR"); p != "" {
 		return p
 	}
-	return filepath.Join(dataDir(), "sync")
+	return filepath.Join(dataDir, "sync")
 }
 
-func dbPath() string {
+func dbPath(dataDir string) string {
 	if p := os.Getenv("JOT_DB"); p != "" {
 		return p
 	}
-	return filepath.Join(dataDir(), "jot.db")
+	return filepath.Join(dataDir, "jot.db")
 }
 
-func dataDir() string {
+func dataDir() (string, error) {
 	if d := os.Getenv("XDG_DATA_HOME"); d != "" {
-		return filepath.Join(d, "jot")
+		return filepath.Join(d, "jot"), nil
 	}
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".local", "share", "jot")
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("determining home directory: %w", err)
+	}
+	return filepath.Join(home, ".local", "share", "jot"), nil
 }

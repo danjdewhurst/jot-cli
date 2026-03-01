@@ -153,6 +153,8 @@ func TestRepoNameFromURL(t *testing.T) {
 		{"https://github.com/user/repo.git", "user/repo"},
 		{"https://github.com/user/repo", "user/repo"},
 		{"git@gitlab.com:org/project.git", "org/project"},
+		{"ssh://git@github.com:22/user/repo.git", "user/repo"},
+		{"ssh://git@github.com/user/repo.git", "user/repo"},
 	}
 	for _, tt := range tests {
 		got := repoNameFromURL(tt.url)

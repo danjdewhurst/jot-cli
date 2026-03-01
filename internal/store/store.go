@@ -33,6 +33,11 @@ func Open(path string) (*Store, error) {
 		return nil, fmt.Errorf("opening sqlite: %w", err)
 	}
 
+	// SQLite does not support concurrent writers, and per-connection pragmas
+	// (foreign_keys, synchronous) must be set on every connection. Limiting
+	// the pool to a single connection ensures pragmas are always active.
+	db.SetMaxOpenConns(1)
+
 	if err := setPragmas(db); err != nil {
 		_ = db.Close()
 		return nil, err

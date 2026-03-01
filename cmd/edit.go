@@ -55,7 +55,7 @@ var editCmd = &cobra.Command{
 
 		updated, err := db.UpdateNote(note.ID, title, body)
 		if err != nil {
-			return err
+			return fmt.Errorf("updating note: %w", err)
 		}
 
 		if flagJSON {

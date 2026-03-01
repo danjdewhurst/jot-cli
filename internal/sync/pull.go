@@ -2,6 +2,7 @@ package sync
 
 import (
 	"bufio"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -16,6 +17,18 @@ func (s *Syncer) Pull() (int, int, error) {
 	if err := s.ensureSyncDir(); err != nil {
 		return 0, 0, fmt.Errorf("creating sync directory: %w", err)
 	}
+
+	lock, err := acquireLock(s.syncDir)
+	if err != nil {
+		return 0, 0, err
+	}
+	defer lock.release()
+
+	return s.pull()
+}
+
+// pull is the internal implementation without locking.
+func (s *Syncer) pull() (int, int, error) {
 
 	mid, err := s.machineID()
 	if err != nil {
@@ -56,7 +69,7 @@ func (s *Syncer) Pull() (int, int, error) {
 		if idx >= 0 {
 			tsStr := strings.TrimSuffix(name[idx+1:], ".ndjson")
 			if fileTime, err := time.Parse(time.RFC3339, tsStr); err == nil {
-				if !lastSync.IsZero() && !fileTime.After(lastSync) {
+				if !lastSync.IsZero() && fileTime.Before(lastSync) {
 					continue
 				}
 			}
@@ -69,6 +82,13 @@ func (s *Syncer) Pull() (int, int, error) {
 		pulled += p
 		conflicts += c
 		importedNoteIDs = append(importedNoteIDs, noteIDs...)
+
+		// Update last_sync after each successfully processed changeset for
+		// resumability — if a later file fails, we won't re-process this one.
+		now := time.Now().UTC()
+		if err := s.store.SetSyncMeta("last_sync", now.Format(time.RFC3339)); err != nil {
+			return pulled, conflicts, err
+		}
 	}
 
 	// Clear changelog entries created by triggers during import
@@ -77,11 +97,6 @@ func (s *Syncer) Pull() (int, int, error) {
 		if err := s.store.ClearChangelogForNotes(importedNoteIDs); err != nil {
 			return pulled, conflicts, err
 		}
-	}
-
-	now := time.Now().UTC()
-	if err := s.store.SetSyncMeta("last_sync", now.Format(time.RFC3339)); err != nil {
-		return pulled, conflicts, err
 	}
 
 	return pulled, conflicts, nil
@@ -100,6 +115,7 @@ func (s *Syncer) processChangeset(path string) (int, int, []string, error) {
 	var importedNoteIDs []string
 
 	scanner := bufio.NewScanner(f)
+	scanner.Buffer(make([]byte, 0, 1024*1024), 1024*1024) // 1MB max line
 	for scanner.Scan() {
 		var ce ChangeEntry
 		if err := json.Unmarshal(scanner.Bytes(), &ce); err != nil {
@@ -127,6 +143,21 @@ func (s *Syncer) processChangeset(path string) (int, int, []string, error) {
 				}
 				pulled++
 				importedNoteIDs = append(importedNoteIDs, ce.Note.ID)
+			case ce.Note.UpdatedAt.Equal(local.UpdatedAt):
+				// Equal timestamps — use deterministic tiebreaker.
+				// Lower body hash wins to ensure both machines converge.
+				remoteHash := fmt.Sprintf("%x", sha256.Sum256([]byte(ce.Note.Body)))
+				localHash := fmt.Sprintf("%x", sha256.Sum256([]byte(local.Body)))
+				if remoteHash < localHash {
+					if err := s.store.UpsertNote(*ce.Note); err != nil {
+						return pulled, conflicts, importedNoteIDs, fmt.Errorf("updating note %s: %w", ce.Note.ID, err)
+					}
+					pulled++
+					importedNoteIDs = append(importedNoteIDs, ce.Note.ID)
+				} else {
+					// Local hash wins (or hashes are identical — no change needed).
+					conflicts++
+				}
 			default:
 				// Local is newer — keep ours.
 				conflicts++
