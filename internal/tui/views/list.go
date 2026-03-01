@@ -28,6 +28,7 @@ type ListView struct {
 	height        int
 	offset        int
 	contextFilter bool
+	selected      map[string]bool
 
 	// Search mode
 	searching bool
@@ -41,7 +42,10 @@ func NewListView() ListView {
 	ti.TextStyle = lipgloss.NewStyle().Foreground(theme.Text)
 	ti.PlaceholderStyle = lipgloss.NewStyle().Foreground(theme.Overlay0)
 	ti.Cursor.Style = lipgloss.NewStyle().Foreground(theme.Lavender)
-	return ListView{input: ti}
+	return ListView{
+		input:    ti,
+		selected: make(map[string]bool),
+	}
 }
 
 func (l *ListView) SetNotes(notes []model.Note) {
@@ -67,6 +71,8 @@ func (l *ListView) SelectedNote() (model.Note, bool) {
 	}
 	return model.Note{}, false
 }
+
+// ── Search ──────────────────────────────────────────────────────────────
 
 func (l *ListView) EnterSearch() {
 	l.searching = true
@@ -105,6 +111,54 @@ func (l *ListView) SetSearchResults(notes []model.Note) {
 func (l *ListView) ResultCount() (int, string) {
 	return len(l.notes), l.SearchQuery()
 }
+
+// ── Multi-select ────────────────────────────────────────────────────────
+
+// ToggleSelection toggles selection for the note at the cursor.
+func (l *ListView) ToggleSelection() {
+	if l.cursor >= len(l.notes) {
+		return
+	}
+	id := l.notes[l.cursor].ID
+	if l.selected[id] {
+		delete(l.selected, id)
+	} else {
+		l.selected[id] = true
+	}
+}
+
+// SelectAll selects all visible notes.
+func (l *ListView) SelectAll() {
+	for _, n := range l.notes {
+		l.selected[n.ID] = true
+	}
+}
+
+// ClearSelection removes all selections.
+func (l *ListView) ClearSelection() {
+	l.selected = make(map[string]bool)
+}
+
+// HasSelection returns true if any notes are selected.
+func (l *ListView) HasSelection() bool {
+	return len(l.selected) > 0
+}
+
+// SelectionCount returns the number of selected notes.
+func (l *ListView) SelectionCount() int {
+	return len(l.selected)
+}
+
+// SelectedIDs returns the IDs of all selected notes.
+func (l *ListView) SelectedIDs() []string {
+	ids := make([]string, 0, len(l.selected))
+	for id := range l.selected {
+		ids = append(ids, id)
+	}
+	return ids
+}
+
+// ── Update ──────────────────────────────────────────────────────────────
 
 func (l *ListView) Update(msg tea.Msg) tea.Cmd {
 	if l.searching {
@@ -204,6 +258,8 @@ func (l ListView) visibleLines() int {
 	return v
 }
 
+// ── View ────────────────────────────────────────────────────────────────
+
 func (l ListView) View() string {
 	if l.searching {
 		return l.viewSearch()
@@ -217,6 +273,9 @@ func (l ListView) View() string {
 	title := fmt.Sprintf("jot — %d notes", len(l.notes))
 	if l.contextFilter {
 		title += " (this project)"
+	}
+	if len(l.selected) > 0 {
+		title += fmt.Sprintf(" [%d selected]", len(l.selected))
 	}
 	b.WriteString(theme.ListTitle.Render(title))
 	b.WriteString("\n")
@@ -275,6 +334,11 @@ func (l ListView) renderNotes(b *strings.Builder) {
 			pin = theme.ListPin.Render("♦ ")
 		}
 
+		check := " "
+		if l.selected[n.ID] {
+			check = theme.ListCheck.Render("✓")
+		}
+
 		age := render.RelativeTimeShort(n.CreatedAt)
 		var tagParts []string
 		for _, t := range n.Tags {
@@ -286,11 +350,11 @@ func (l ListView) renderNotes(b *strings.Builder) {
 
 		if i == l.cursor {
 			cursor := theme.ListCursor.Render("▸")
-			row := fmt.Sprintf("%s %s"+titleFmt+"  %s  %s", cursor, pin, render.Truncate(title, titleWidth), age, tags)
+			row := fmt.Sprintf("%s%s %s"+titleFmt+"  %s  %s", cursor, check, pin, render.Truncate(title, titleWidth), age, tags)
 			line := theme.ListSelected.Width(l.width).Render(row)
 			b.WriteString(line)
 		} else {
-			line := fmt.Sprintf("  %s"+titleFmt+"  %s  %s", pin, render.Truncate(title, titleWidth), theme.ListDim.Render(age), theme.ListTag.Render(tags))
+			line := fmt.Sprintf(" %s %s"+titleFmt+"  %s  %s", check, pin, render.Truncate(title, titleWidth), theme.ListDim.Render(age), theme.ListTag.Render(tags))
 			b.WriteString(line)
 		}
 

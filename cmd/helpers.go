@@ -154,6 +154,53 @@ func syncNoteRefs(noteID, body string) {
 	}
 }
 
+// collectNotes resolves notes from either positional ID args or --tag filter flags.
+// Returns the matching notes or an error. At least one ID or one --tag must be provided.
+func collectNotes(cmd *cobra.Command, args []string) ([]model.Note, error) {
+	if len(args) > 0 {
+		var notes []model.Note
+		for _, idOrPrefix := range args {
+			n, err := resolveNote(idOrPrefix)
+			if err != nil {
+				return nil, err
+			}
+			notes = append(notes, n)
+		}
+		return notes, nil
+	}
+
+	// No positional args — try filter flags
+	filter, err := buildNoteFilter(cmd)
+	if err != nil {
+		return nil, err
+	}
+	if len(filter.Tags) == 0 {
+		return nil, fmt.Errorf("provide note IDs or use --tag to filter")
+	}
+
+	notes, err := db.ListNotes(filter)
+	if err != nil {
+		return nil, fmt.Errorf("listing notes: %w", err)
+	}
+	if len(notes) == 0 {
+		return nil, fmt.Errorf("no notes match the given filter")
+	}
+	return notes, nil
+}
+
+// confirmBulk prints a preview and asks for confirmation. Returns true if
+// the user confirms. Always returns true if --force is set.
+func confirmBulk(cmd *cobra.Command, action string, count int) bool {
+	force, _ := cmd.Flags().GetBool("force")
+	if force {
+		return true
+	}
+	fmt.Fprintf(os.Stderr, "%s %d notes? [y/N] ", action, count)
+	var response string
+	fmt.Scanln(&response)
+	return response == "y" || response == "Y"
+}
+
 func filterByDateRange(notes []model.Note, since, until time.Time) []model.Note {
 	if since.IsZero() && until.IsZero() {
 		return notes
