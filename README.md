@@ -4,8 +4,10 @@
 
 **Notes that know where you are — a CLI-first notes tool with context-aware tagging, FTS5 search, a TUI, and first-class AI agent support.**
 
+[![CI](https://img.shields.io/github/actions/workflow/status/danjdewhurst/jot-cli/ci.yml?branch=main&style=flat&label=CI)](https://github.com/danjdewhurst/jot-cli/actions/workflows/ci.yml)
 [![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat&logo=go&logoColor=white)](https://go.dev)
 [![Release](https://img.shields.io/github/v/release/danjdewhurst/jot-cli?style=flat&color=6C63FF)](https://github.com/danjdewhurst/jot-cli/releases/latest)
+[![Homebrew](https://img.shields.io/badge/Homebrew-tap-FBB040?style=flat&logo=homebrew&logoColor=white)](https://github.com/danjdewhurst/homebrew-tap)
 [![License: MIT](https://img.shields.io/badge/Licence-MIT-yellow.svg)](LICENSE)
 [![SQLite](https://img.shields.io/badge/SQLite-FTS5-003B57?style=flat&logo=sqlite&logoColor=white)](https://www.sqlite.org/fts5.html)
 
