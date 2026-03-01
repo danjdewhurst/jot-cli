@@ -42,6 +42,26 @@ j rm <id> --json
 # Permanently delete
 j rm <id> --purge --force --json
 
+# Export notes to JSON
+j export --json
+j export -o backup.json
+j export --tag "project:alpha" -o filtered.json
+j export --format md -o notes.md          # Markdown (human-readable, not importable)
+j export --since 2026-01-01 --until 2026-02-01 -o january.json
+j export --search "deploy" -o matches.json
+j export --archived -o all.json           # Include archived notes
+
+# Import notes from JSON
+j import backup.json --json
+j import backup.json --dry-run            # Preview without writing
+j import backup.json --new-ids            # Generate fresh IDs instead of preserving originals
+j import backup.json --no-context         # Skip auto-context tags
+j import backup.json --tag "source:backup" # Add extra tags to all imported notes
+j import -                                # Read from stdin
+
+# Pipe between instances
+j export --tag project:alpha | j import --new-ids -
+
 # Manage tags
 j tag list --json
 j tag add <id> "key:value" --json
