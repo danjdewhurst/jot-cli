@@ -2,6 +2,7 @@ package sync
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -54,7 +55,10 @@ func (s *Syncer) pull() (int, int, error) {
 
 	for _, entry := range dirEntries {
 		name := entry.Name()
-		if !strings.HasSuffix(name, ".ndjson") {
+
+		// Accept .ndjson and .ndjson.age files.
+		encrypted := strings.HasSuffix(name, ".ndjson.age")
+		if !encrypted && !strings.HasSuffix(name, ".ndjson") {
 			continue
 		}
 
@@ -64,10 +68,12 @@ func (s *Syncer) pull() (int, int, error) {
 		}
 
 		// Skip files older than last sync. The timestamp is embedded after
-		// the machine ID prefix: <machine_id>_<RFC3339>.ndjson
+		// the machine ID prefix: <machine_id>_<RFC3339>.ndjson[.age]
 		idx := strings.Index(name, "_")
 		if idx >= 0 {
-			tsStr := strings.TrimSuffix(name[idx+1:], ".ndjson")
+			tsStr := name[idx+1:]
+			tsStr = strings.TrimSuffix(tsStr, ".age")
+			tsStr = strings.TrimSuffix(tsStr, ".ndjson")
 			if fileTime, err := time.Parse(time.RFC3339, tsStr); err == nil {
 				if !lastSync.IsZero() && fileTime.Before(lastSync) {
 					continue
@@ -75,7 +81,7 @@ func (s *Syncer) pull() (int, int, error) {
 			}
 		}
 
-		p, c, noteIDs, err := s.processChangeset(filepath.Join(changesetsDir, name))
+		p, c, noteIDs, err := s.processChangeset(filepath.Join(changesetsDir, name), encrypted)
 		if err != nil {
 			return pulled, conflicts, fmt.Errorf("processing %s: %w", name, err)
 		}
@@ -104,21 +110,36 @@ func (s *Syncer) pull() (int, int, error) {
 
 // processChangeset reads and applies a single changeset file.
 // Returns (pulled, conflicts, importedNoteIDs, err).
-func (s *Syncer) processChangeset(path string) (int, int, []string, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return 0, 0, nil, err
+func (s *Syncer) processChangeset(path string, encrypted bool) (int, int, []string, error) {
+	var reader *bufio.Scanner
+
+	if encrypted {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return 0, 0, nil, fmt.Errorf("reading encrypted file: %w", err)
+		}
+		plaintext, err := Decrypt(s.passphrase, data)
+		if err != nil {
+			return 0, 0, nil, fmt.Errorf("decrypting changeset: %w", err)
+		}
+		reader = bufio.NewScanner(bytes.NewReader(plaintext))
+	} else {
+		f, err := os.Open(path)
+		if err != nil {
+			return 0, 0, nil, err
+		}
+		defer f.Close() //nolint:errcheck
+		reader = bufio.NewScanner(f)
 	}
-	defer f.Close() //nolint:errcheck
+
+	reader.Buffer(make([]byte, 0, 1024*1024), 1024*1024) // 1MB max line
 
 	var pulled, conflicts int
 	var importedNoteIDs []string
 
-	scanner := bufio.NewScanner(f)
-	scanner.Buffer(make([]byte, 0, 1024*1024), 1024*1024) // 1MB max line
-	for scanner.Scan() {
+	for reader.Scan() {
 		var ce ChangeEntry
-		if err := json.Unmarshal(scanner.Bytes(), &ce); err != nil {
+		if err := json.Unmarshal(reader.Bytes(), &ce); err != nil {
 			return pulled, conflicts, importedNoteIDs, fmt.Errorf("decoding entry: %w", err)
 		}
 
@@ -190,5 +211,5 @@ func (s *Syncer) processChangeset(path string) (int, int, []string, error) {
 		}
 	}
 
-	return pulled, conflicts, importedNoteIDs, scanner.Err()
+	return pulled, conflicts, importedNoteIDs, reader.Err()
 }
