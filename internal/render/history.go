@@ -27,7 +27,7 @@ func HistoryTable(w io.Writer, versions []model.NoteVersion, diffSummaries []str
 		_, _ = fmt.Fprintf(w, "%-8d  %-20s  %-12s  %s\n",
 			v.Version,
 			v.CreatedAt.Format(time.DateTime),
-			RelativeTime(v.CreatedAt),
+			FormatTime(v.CreatedAt),
 			summary,
 		)
 	}

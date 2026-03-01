@@ -37,7 +37,7 @@ func NoteTable(w io.Writer, notes []model.Note) {
 		_, _ = fmt.Fprintf(w, "%-28s  %-40s  %-12s  %s\n",
 			shortID(n.ID),
 			title,
-			RelativeTime(n.CreatedAt),
+			FormatTime(n.CreatedAt),
 			strings.Join(tagStrs, ", "),
 		)
 	}

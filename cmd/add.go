@@ -40,7 +40,7 @@ var addCmd = &cobra.Command{
 			if title != "" {
 				initial = "# " + title + "\n\n"
 			}
-			edited, err := editor.Edit(initial)
+			edited, err := editor.Edit(initial, cfg.Editor)
 			if err != nil {
 				return fmt.Errorf("editor: %w", err)
 			}

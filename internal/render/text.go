@@ -6,6 +6,22 @@ import (
 	"time"
 )
 
+// DateFormat controls how timestamps are displayed. Supported values:
+// "relative" (default), "absolute", "iso".
+var DateFormat string
+
+// FormatTime formats a timestamp according to the DateFormat setting.
+func FormatTime(t time.Time) string {
+	switch DateFormat {
+	case "absolute":
+		return t.Format("2006-01-02 15:04")
+	case "iso":
+		return t.Format(time.RFC3339)
+	default:
+		return RelativeTime(t)
+	}
+}
+
 // Truncate replaces newlines with spaces and truncates to max runes,
 // appending "…" if the string was shortened.
 func Truncate(s string, max int) string {

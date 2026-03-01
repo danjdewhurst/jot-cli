@@ -147,6 +147,48 @@ func TestTruncateLog_WithNewlines(t *testing.T) {
 	}
 }
 
+func TestFormatTime(t *testing.T) {
+	ts := time.Date(2025, 6, 15, 14, 30, 0, 0, time.UTC)
+
+	t.Run("relative (default)", func(t *testing.T) {
+		render.DateFormat = ""
+		got := render.FormatTime(ts)
+		// Should contain "ago" or "now" (relative format)
+		if got == "" {
+			t.Error("FormatTime returned empty string")
+		}
+	})
+
+	t.Run("relative explicit", func(t *testing.T) {
+		render.DateFormat = "relative"
+		got := render.FormatTime(ts)
+		if got == "" {
+			t.Error("FormatTime returned empty string")
+		}
+	})
+
+	t.Run("absolute", func(t *testing.T) {
+		render.DateFormat = "absolute"
+		got := render.FormatTime(ts)
+		want := "2025-06-15 14:30"
+		if got != want {
+			t.Errorf("FormatTime = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("iso", func(t *testing.T) {
+		render.DateFormat = "iso"
+		got := render.FormatTime(ts)
+		want := ts.Format(time.RFC3339)
+		if got != want {
+			t.Errorf("FormatTime = %q, want %q", got, want)
+		}
+	})
+
+	// Reset
+	render.DateFormat = ""
+}
+
 func ExampleTruncate() {
 	fmt.Println(render.Truncate("hello world", 8))
 	// Output: hello w…

@@ -116,6 +116,9 @@ j
 | `j tag list` | Browse all tags |
 | `j tag add <id> <key:value>` | Tag a note |
 | `j tag rm <id> <key:value>` | Remove a tag |
+| `j config` | Show resolved configuration |
+| `j config --path` | Print config file path |
+| `j config init` | Create a default config file |
 | `j version` | Print version |
 
 **Global flags:** `--json` `--db <path>` `--verbose`
@@ -247,6 +250,31 @@ Run `j` with no arguments to launch the interactive interface.
 ## Configuration
 
 **jot-cli works with zero configuration.** Everything below is optional.
+
+### Config file
+
+Create a config file at `~/.config/jot/config.toml` (respects `XDG_CONFIG_HOME`):
+
+```bash
+jot config init    # Create default config with comments
+jot config         # Print resolved config (all sources merged)
+jot config --path  # Print config file path
+```
+
+```toml
+[general]
+editor = "nvim"           # Override $EDITOR for jot only
+default_limit = 20        # Default --limit for list/log (0 = unlimited)
+
+[display]
+date_format = "relative"  # "relative" | "absolute" | "iso"
+json = false              # Default to JSON output
+
+[sync]
+dir = "~/Dropbox/jot-sync"
+```
+
+**Precedence:** CLI flags > environment variables > config file > defaults.
 
 ### Storage
 

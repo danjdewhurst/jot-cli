@@ -7,7 +7,10 @@ import (
 	"strings"
 )
 
-func editorCmd() string {
+func editorCmd(override string) string {
+	if override != "" {
+		return override
+	}
 	if e := os.Getenv("VISUAL"); e != "" {
 		return e
 	}
@@ -18,7 +21,8 @@ func editorCmd() string {
 }
 
 // Edit opens the user's editor with initial content and returns the edited text.
-func Edit(initial string) (string, error) {
+// If override is non-empty, it is used instead of $VISUAL/$EDITOR.
+func Edit(initial string, override string) (string, error) {
 	f, err := os.CreateTemp("", "jot-*.md")
 	if err != nil {
 		return "", fmt.Errorf("creating temp file: %w", err)
@@ -31,8 +35,8 @@ func Edit(initial string) (string, error) {
 	}
 	_ = f.Close()
 
-	editor := editorCmd()
-	parts := strings.Fields(editor)
+	editorBin := editorCmd(override)
+	parts := strings.Fields(editorBin)
 	parts = append(parts, f.Name())
 
 	cmd := exec.Command(parts[0], parts[1:]...)
