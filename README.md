@@ -2,15 +2,12 @@
 
 # jot-cli
 
-**A fast, context-aware notes tool for the terminal.**
+**Notes that know where you are — a CLI-first notes tool with context-aware tagging, FTS5 search, a TUI, and first-class AI agent support.**
 
 [![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat&logo=go&logoColor=white)](https://go.dev)
 [![Release](https://img.shields.io/github/v/release/danjdewhurst/jot-cli?style=flat&color=6C63FF)](https://github.com/danjdewhurst/jot-cli/releases/latest)
 [![License: MIT](https://img.shields.io/badge/Licence-MIT-yellow.svg)](LICENSE)
 [![SQLite](https://img.shields.io/badge/SQLite-FTS5-003B57?style=flat&logo=sqlite&logoColor=white)](https://www.sqlite.org/fts5.html)
-
-Notes that know where you are. Full-text search. Interactive TUI.<br>
-Zero config. Single binary. Works with AI agents out of the box.
 
 </div>
 
