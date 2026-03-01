@@ -37,6 +37,20 @@ go test ./internal/store/... -v
 - Migrations are embedded SQL files in `internal/store/migrations/`
 - Tests use temp file databases (not `:memory:`) because Go's `database/sql` connection pool allocates separate in-memory DBs per connection
 
+## TDD — Red/Green/Refactor
+
+Follow strict TDD for all new code and bug fixes:
+
+1. **Red** — Write a failing test first that defines the expected behaviour
+2. **Green** — Write the minimum code to make the test pass
+3. **Refactor** — Clean up while keeping tests green
+
+Rules:
+- Never write production code without a failing test
+- Run tests after each step to confirm red→green→green
+- For bug fixes, write a test that reproduces the bug before fixing it
+- Keep test cases focused — one assertion per logical behaviour
+
 ## Style
 
 - Go standard formatting (`gofmt`)
