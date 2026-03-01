@@ -186,7 +186,7 @@ Run `j` with no arguments to launch the interactive interface.
 
 ## AI agent usage
 
-jot-cli is designed to be called by AI agents (Claude Code, etc.) via shell. Every command supports `--json` for structured I/O, and a [SKILL.md](SKILL.md) is included as a Claude Code skill reference.
+jot-cli is designed to be called by AI agents (Claude Code, etc.) via shell. Every command supports `--json` for structured I/O.
 
 ```bash
 # Agent creates a note
@@ -198,6 +198,26 @@ j search "root cause" --json
 # Agent reads a specific note
 j show 01KJM --json
 ```
+
+### Claude Code skill
+
+A [Claude Code skill](.claude/skills/jot-cli/SKILL.md) is included so Claude knows how to use jot-cli automatically. To install it globally (all projects):
+
+```bash
+# Copy the skill to your personal skills directory
+mkdir -p ~/.claude/skills/jot-cli
+cp .claude/skills/jot-cli/SKILL.md ~/.claude/skills/jot-cli/SKILL.md
+```
+
+Or with a one-liner if you don't have the repo cloned:
+
+```bash
+mkdir -p ~/.claude/skills/jot-cli && curl -fsSL \
+  https://raw.githubusercontent.com/danjdewhurst/jot-cli/main/.claude/skills/jot-cli/SKILL.md \
+  -o ~/.claude/skills/jot-cli/SKILL.md
+```
+
+Once installed, Claude will automatically reference jot-cli commands when relevant — no need to invoke anything manually.
 
 ---
 
