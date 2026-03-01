@@ -23,7 +23,7 @@ archives:
   - formats: [tar.gz]
     name_template: "jot-cli_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
-homebrew_casks:
+brews:
   - repository:
       owner: danjdewhurst
       name: homebrew-tap
