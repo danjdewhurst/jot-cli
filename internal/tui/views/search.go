@@ -116,7 +116,7 @@ func (s SearchView) View() string {
 		if i == s.cursor {
 			prefix = "▸ "
 		}
-		b.WriteString(fmt.Sprintf("%s%s\n", prefix, title))
+		_, _ = fmt.Fprintf(&b, "%s%s\n", prefix, title)
 	}
 
 	return b.String()

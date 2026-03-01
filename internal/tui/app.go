@@ -226,8 +226,7 @@ func (a *App) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (a *App) updateDetail(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if kmsg, ok := msg.(tea.KeyMsg); ok {
-		switch {
-		case key.Matches(kmsg, keys.Edit):
+		if key.Matches(kmsg, keys.Edit) {
 			note := a.detail.Note()
 			a.compose.SetNote(note)
 			a.pushView(viewCompose)
@@ -267,8 +266,7 @@ func (a *App) updateCompose(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (a *App) updateSearch(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if kmsg, ok := msg.(tea.KeyMsg); ok {
-		switch {
-		case key.Matches(kmsg, keys.Enter):
+		if key.Matches(kmsg, keys.Enter) {
 			if note, ok := a.search.SelectedNote(); ok {
 				a.detail.SetNote(note)
 				a.pushView(viewDetail)

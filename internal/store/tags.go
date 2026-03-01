@@ -11,7 +11,7 @@ func (s *Store) AddTag(noteID string, tag model.Tag) error {
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback()
+	defer tx.Rollback() //nolint:errcheck // rollback after commit is a no-op
 
 	_, err = tx.Exec(
 		"INSERT OR IGNORE INTO tags (note_id, key, value) VALUES (?, ?, ?)",
@@ -33,7 +33,7 @@ func (s *Store) RemoveTag(noteID string, tag model.Tag) error {
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback()
+	defer tx.Rollback() //nolint:errcheck // rollback after commit is a no-op
 
 	res, err := tx.Exec(
 		"DELETE FROM tags WHERE note_id = ? AND key = ? AND value = ?",
@@ -66,7 +66,7 @@ func (s *Store) ListTags(key string) ([]model.Tag, error) {
 	if err != nil {
 		return nil, fmt.Errorf("listing tags: %w", err)
 	}
-	defer rows.Close()
+	defer rows.Close() //nolint:errcheck // rows.Close error is checked via rows.Err
 
 	var tags []model.Tag
 	for rows.Next() {

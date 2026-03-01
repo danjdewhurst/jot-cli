@@ -32,13 +32,13 @@ func Open(path string) (*Store, error) {
 	}
 
 	if err := setPragmas(db); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, err
 	}
 
 	s := &Store{db: db}
 	if err := s.migrate(); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("running migrations: %w", err)
 	}
 
@@ -76,7 +76,7 @@ func (s *Store) migrate() error {
 	if err != nil {
 		return fmt.Errorf("getting connection: %w", err)
 	}
-	defer conn.Close()
+	defer conn.Close() //nolint:errcheck // best-effort close on migration connection
 
 	for _, stmt := range splitSQL(string(data)) {
 		stmt = strings.TrimSpace(stmt)

@@ -73,8 +73,7 @@ func (c *ComposeView) SetSize(w, h int) {
 
 func (c *ComposeView) Update(msg tea.Msg) {
 	if kmsg, ok := msg.(tea.KeyMsg); ok {
-		switch kmsg.String() {
-		case "tab":
+		if kmsg.String() == "tab" {
 			c.focusBody = !c.focusBody
 			if c.focusBody {
 				c.titleIn.Blur()

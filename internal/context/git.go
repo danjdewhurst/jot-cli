@@ -93,7 +93,7 @@ func parseOriginURL(configPath string) string {
 	if err != nil {
 		return ""
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errcheck // best-effort close on read-only file
 
 	scanner := bufio.NewScanner(f)
 	inOrigin := false

@@ -10,13 +10,13 @@ func TestDetectBranch(t *testing.T) {
 	// Create a fake git repo
 	dir := t.TempDir()
 	gitDir := filepath.Join(dir, ".git")
-	os.Mkdir(gitDir, 0o755)
-	os.WriteFile(filepath.Join(gitDir, "HEAD"), []byte("ref: refs/heads/main\n"), 0o644)
+	_ = os.Mkdir(gitDir, 0o755)
+	_ = os.WriteFile(filepath.Join(gitDir, "HEAD"), []byte("ref: refs/heads/main\n"), 0o644)
 
 	// Change to the temp dir
 	orig, _ := os.Getwd()
-	os.Chdir(dir)
-	defer os.Chdir(orig)
+	_ = os.Chdir(dir)
+	defer func() { _ = os.Chdir(orig) }()
 
 	branch, err := DetectBranch()
 	if err != nil {
@@ -30,7 +30,7 @@ func TestDetectBranch(t *testing.T) {
 func TestDetectRepo(t *testing.T) {
 	dir := t.TempDir()
 	gitDir := filepath.Join(dir, ".git")
-	os.Mkdir(gitDir, 0o755)
+	_ = os.Mkdir(gitDir, 0o755)
 
 	config := `[core]
 	repositoryformatversion = 0
@@ -38,11 +38,11 @@ func TestDetectRepo(t *testing.T) {
 	url = git@github.com:user/myproject.git
 	fetch = +refs/heads/*:refs/remotes/origin/*
 `
-	os.WriteFile(filepath.Join(gitDir, "config"), []byte(config), 0o644)
+	_ = os.WriteFile(filepath.Join(gitDir, "config"), []byte(config), 0o644)
 
 	orig, _ := os.Getwd()
-	os.Chdir(dir)
-	defer os.Chdir(orig)
+	_ = os.Chdir(dir)
+	defer func() { _ = os.Chdir(orig) }()
 
 	repo, err := DetectRepo()
 	if err != nil {
@@ -56,16 +56,16 @@ func TestDetectRepo(t *testing.T) {
 func TestDetectRepoHTTPS(t *testing.T) {
 	dir := t.TempDir()
 	gitDir := filepath.Join(dir, ".git")
-	os.Mkdir(gitDir, 0o755)
+	_ = os.Mkdir(gitDir, 0o755)
 
 	config := `[remote "origin"]
 	url = https://github.com/user/myproject.git
 `
-	os.WriteFile(filepath.Join(gitDir, "config"), []byte(config), 0o644)
+	_ = os.WriteFile(filepath.Join(gitDir, "config"), []byte(config), 0o644)
 
 	orig, _ := os.Getwd()
-	os.Chdir(dir)
-	defer os.Chdir(orig)
+	_ = os.Chdir(dir)
+	defer func() { _ = os.Chdir(orig) }()
 
 	repo, err := DetectRepo()
 	if err != nil {
@@ -79,13 +79,13 @@ func TestDetectRepoHTTPS(t *testing.T) {
 func TestDetectRepoFallback(t *testing.T) {
 	dir := t.TempDir()
 	gitDir := filepath.Join(dir, ".git")
-	os.Mkdir(gitDir, 0o755)
+	_ = os.Mkdir(gitDir, 0o755)
 	// No config file — should fall back to directory name
-	os.WriteFile(filepath.Join(gitDir, "config"), []byte("[core]\n"), 0o644)
+	_ = os.WriteFile(filepath.Join(gitDir, "config"), []byte("[core]\n"), 0o644)
 
 	orig, _ := os.Getwd()
-	os.Chdir(dir)
-	defer os.Chdir(orig)
+	_ = os.Chdir(dir)
+	defer func() { _ = os.Chdir(orig) }()
 
 	repo, err := DetectRepo()
 	if err != nil {
@@ -101,16 +101,16 @@ func TestWorktreeSupport(t *testing.T) {
 	// Create a fake worktree: .git is a file pointing to another dir
 	dir := t.TempDir()
 	mainGitDir := filepath.Join(dir, "main-repo", ".git")
-	os.MkdirAll(mainGitDir, 0o755)
-	os.WriteFile(filepath.Join(mainGitDir, "HEAD"), []byte("ref: refs/heads/feature\n"), 0o644)
+	_ = os.MkdirAll(mainGitDir, 0o755)
+	_ = os.WriteFile(filepath.Join(mainGitDir, "HEAD"), []byte("ref: refs/heads/feature\n"), 0o644)
 
 	worktreeDir := filepath.Join(dir, "worktree")
-	os.MkdirAll(worktreeDir, 0o755)
-	os.WriteFile(filepath.Join(worktreeDir, ".git"), []byte("gitdir: "+mainGitDir+"\n"), 0o644)
+	_ = os.MkdirAll(worktreeDir, 0o755)
+	_ = os.WriteFile(filepath.Join(worktreeDir, ".git"), []byte("gitdir: "+mainGitDir+"\n"), 0o644)
 
 	orig, _ := os.Getwd()
-	os.Chdir(worktreeDir)
-	defer os.Chdir(orig)
+	_ = os.Chdir(worktreeDir)
+	defer func() { _ = os.Chdir(orig) }()
 
 	branch, err := DetectBranch()
 	if err != nil {
@@ -124,8 +124,8 @@ func TestWorktreeSupport(t *testing.T) {
 func TestNoGitRepo(t *testing.T) {
 	dir := t.TempDir()
 	orig, _ := os.Getwd()
-	os.Chdir(dir)
-	defer os.Chdir(orig)
+	_ = os.Chdir(dir)
+	defer func() { _ = os.Chdir(orig) }()
 
 	branch, err := DetectBranch()
 	if err != nil {

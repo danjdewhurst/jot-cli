@@ -1,0 +1,20 @@
+version: "2"
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - errorlint
+    - gocritic
+    - misspell
+
+linters-settings:
+  misspell:
+    locale: UK
+
+issues:
+  exclude-dirs:
+    - vendor

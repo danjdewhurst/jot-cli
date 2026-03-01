@@ -2,6 +2,7 @@ package store
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -18,7 +19,7 @@ func (s *Store) CreateNote(title, body string, tags []model.Tag) (model.Note, er
 	if err != nil {
 		return model.Note{}, fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback()
+	defer tx.Rollback() //nolint:errcheck // rollback after commit is a no-op
 
 	_, err = tx.Exec(
 		"INSERT INTO notes (id, title, body, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
@@ -58,7 +59,7 @@ func (s *Store) GetNote(id string) (model.Note, error) {
 	err := s.db.QueryRow(
 		"SELECT id, title, body, created_at, updated_at, archived FROM notes WHERE id = ?", id,
 	).Scan(&n.ID, &n.Title, &n.Body, &createdAt, &updatedAt, &archived)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return model.Note{}, fmt.Errorf("note %q not found", id)
 	}
 	if err != nil {
@@ -85,7 +86,7 @@ func (s *Store) UpdateNote(id, title, body string) (model.Note, error) {
 	if err != nil {
 		return model.Note{}, fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback()
+	defer tx.Rollback() //nolint:errcheck // rollback after commit is a no-op
 
 	res, err := tx.Exec(
 		"UPDATE notes SET title = ?, body = ?, updated_at = ? WHERE id = ?",
@@ -126,7 +127,7 @@ func (s *Store) DeleteNote(id string) error {
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback()
+	defer tx.Rollback() //nolint:errcheck // rollback after commit is a no-op
 
 	// Delete FTS entry first
 	if _, err := tx.Exec("DELETE FROM notes_fts WHERE note_id = ?", id); err != nil {
@@ -178,7 +179,7 @@ func (s *Store) ListNotes(filter model.NoteFilter) ([]model.Note, error) {
 	if err != nil {
 		return nil, fmt.Errorf("listing notes: %w", err)
 	}
-	defer rows.Close()
+	defer rows.Close() //nolint:errcheck // rows.Close error is checked via rows.Err
 
 	var notes []model.Note
 	for rows.Next() {
@@ -208,7 +209,7 @@ func (s *Store) getTagsForNote(noteID string) ([]model.Tag, error) {
 	if err != nil {
 		return nil, fmt.Errorf("querying tags: %w", err)
 	}
-	defer rows.Close()
+	defer rows.Close() //nolint:errcheck // rows.Close error is checked via rows.Err
 
 	var tags []model.Tag
 	for rows.Next() {
@@ -241,7 +242,7 @@ func syncFTS(tx *sql.Tx, noteID string) error {
 	if err != nil {
 		return fmt.Errorf("querying tags for FTS sync: %w", err)
 	}
-	defer rows.Close()
+	defer rows.Close() //nolint:errcheck // rows.Close error is checked via rows.Err
 
 	var parts []string
 	for rows.Next() {

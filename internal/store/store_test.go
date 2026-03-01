@@ -16,7 +16,7 @@ func newTestStore(t *testing.T) *store.Store {
 	if err != nil {
 		t.Fatalf("opening store: %v", err)
 	}
-	t.Cleanup(func() { s.Close() })
+	t.Cleanup(func() { _ = s.Close() })
 	return s
 }
 
@@ -55,9 +55,9 @@ func TestCreateAndGetNote(t *testing.T) {
 func TestListNotes(t *testing.T) {
 	s := newTestStore(t)
 
-	s.CreateNote("First", "Body 1", nil)
-	s.CreateNote("Second", "Body 2", nil)
-	s.CreateNote("Third", "Body 3", nil)
+	_, _ = s.CreateNote("First", "Body 1", nil)
+	_, _ = s.CreateNote("Second", "Body 2", nil)
+	_, _ = s.CreateNote("Third", "Body 3", nil)
 
 	notes, err := s.ListNotes(model.NoteFilter{})
 	if err != nil {
@@ -71,8 +71,8 @@ func TestListNotes(t *testing.T) {
 func TestListNotesWithTagFilter(t *testing.T) {
 	s := newTestStore(t)
 
-	s.CreateNote("Work Note", "work stuff", []model.Tag{{Key: "folder", Value: "work"}})
-	s.CreateNote("Personal Note", "personal stuff", []model.Tag{{Key: "folder", Value: "home"}})
+	_, _ = s.CreateNote("Work Note", "work stuff", []model.Tag{{Key: "folder", Value: "work"}})
+	_, _ = s.CreateNote("Personal Note", "personal stuff", []model.Tag{{Key: "folder", Value: "home"}})
 
 	notes, err := s.ListNotes(model.NoteFilter{
 		Tags: []model.Tag{{Key: "folder", Value: "work"}},
@@ -145,9 +145,9 @@ func TestDeleteNote(t *testing.T) {
 func TestSearchNotes(t *testing.T) {
 	s := newTestStore(t)
 
-	s.CreateNote("Go Programming", "Learn Go concurrency patterns", nil)
-	s.CreateNote("Python Basics", "Variables and loops", nil)
-	s.CreateNote("Rust Overview", "Memory safety without GC", nil)
+	_, _ = s.CreateNote("Go Programming", "Learn Go concurrency patterns", nil)
+	_, _ = s.CreateNote("Python Basics", "Variables and loops", nil)
+	_, _ = s.CreateNote("Rust Overview", "Memory safety without GC", nil)
 
 	results, err := s.Search("Go concurrency", nil)
 	if err != nil {
@@ -164,8 +164,8 @@ func TestSearchNotes(t *testing.T) {
 func TestSearchByTag(t *testing.T) {
 	s := newTestStore(t)
 
-	s.CreateNote("Tagged Note", "content here", []model.Tag{{Key: "project", Value: "alpha"}})
-	s.CreateNote("Other Note", "content here too", []model.Tag{{Key: "project", Value: "beta"}})
+	_, _ = s.CreateNote("Tagged Note", "content here", []model.Tag{{Key: "project", Value: "alpha"}})
+	_, _ = s.CreateNote("Other Note", "content here too", []model.Tag{{Key: "project", Value: "beta"}})
 
 	results, err := s.Search("content", []model.Tag{{Key: "project", Value: "alpha"}})
 	if err != nil {
@@ -204,8 +204,8 @@ func TestAddAndRemoveTag(t *testing.T) {
 func TestListTags(t *testing.T) {
 	s := newTestStore(t)
 
-	s.CreateNote("A", "", []model.Tag{{Key: "folder", Value: "work"}, {Key: "git_repo", Value: "myapp"}})
-	s.CreateNote("B", "", []model.Tag{{Key: "folder", Value: "home"}})
+	_, _ = s.CreateNote("A", "", []model.Tag{{Key: "folder", Value: "work"}, {Key: "git_repo", Value: "myapp"}})
+	_, _ = s.CreateNote("B", "", []model.Tag{{Key: "folder", Value: "home"}})
 
 	tags, err := s.ListTags("")
 	if err != nil {

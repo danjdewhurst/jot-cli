@@ -11,13 +11,13 @@ import (
 
 func NoteTable(w io.Writer, notes []model.Note) {
 	if len(notes) == 0 {
-		fmt.Fprintln(w, "No notes found.")
+		_, _ = fmt.Fprintln(w, "No notes found.")
 		return
 	}
 
 	// Header
-	fmt.Fprintf(w, "%-28s  %-40s  %-12s  %s\n", "ID", "TITLE", "AGE", "TAGS")
-	fmt.Fprintf(w, "%s\n", strings.Repeat("─", 100))
+	_, _ = fmt.Fprintf(w, "%-28s  %-40s  %-12s  %s\n", "ID", "TITLE", "AGE", "TAGS")
+	_, _ = fmt.Fprintf(w, "%s\n", strings.Repeat("─", 100))
 
 	for _, n := range notes {
 		title := n.Title
@@ -30,7 +30,7 @@ func NoteTable(w io.Writer, notes []model.Note) {
 			tagStrs = append(tagStrs, t.String())
 		}
 
-		fmt.Fprintf(w, "%-28s  %-40s  %-12s  %s\n",
+		_, _ = fmt.Fprintf(w, "%-28s  %-40s  %-12s  %s\n",
 			shortID(n.ID),
 			title,
 			relativeTime(n.CreatedAt),
@@ -40,34 +40,34 @@ func NoteTable(w io.Writer, notes []model.Note) {
 }
 
 func NoteDetail(w io.Writer, n model.Note) {
-	fmt.Fprintf(w, "ID:      %s\n", n.ID)
-	fmt.Fprintf(w, "Title:   %s\n", n.Title)
-	fmt.Fprintf(w, "Created: %s\n", n.CreatedAt.Format(time.RFC3339))
-	fmt.Fprintf(w, "Updated: %s\n", n.UpdatedAt.Format(time.RFC3339))
+	_, _ = fmt.Fprintf(w, "ID:      %s\n", n.ID)
+	_, _ = fmt.Fprintf(w, "Title:   %s\n", n.Title)
+	_, _ = fmt.Fprintf(w, "Created: %s\n", n.CreatedAt.Format(time.RFC3339))
+	_, _ = fmt.Fprintf(w, "Updated: %s\n", n.UpdatedAt.Format(time.RFC3339))
 
 	if len(n.Tags) > 0 {
 		var tagStrs []string
 		for _, t := range n.Tags {
 			tagStrs = append(tagStrs, t.String())
 		}
-		fmt.Fprintf(w, "Tags:    %s\n", strings.Join(tagStrs, ", "))
+		_, _ = fmt.Fprintf(w, "Tags:    %s\n", strings.Join(tagStrs, ", "))
 	}
 
 	if n.Body != "" {
-		fmt.Fprintf(w, "\n%s\n", n.Body)
+		_, _ = fmt.Fprintf(w, "\n%s\n", n.Body)
 	}
 }
 
 func TagTable(w io.Writer, tags []model.Tag) {
 	if len(tags) == 0 {
-		fmt.Fprintln(w, "No tags found.")
+		_, _ = fmt.Fprintln(w, "No tags found.")
 		return
 	}
 
-	fmt.Fprintf(w, "%-20s  %s\n", "KEY", "VALUE")
-	fmt.Fprintf(w, "%s\n", strings.Repeat("─", 50))
+	_, _ = fmt.Fprintf(w, "%-20s  %s\n", "KEY", "VALUE")
+	_, _ = fmt.Fprintf(w, "%s\n", strings.Repeat("─", 50))
 	for _, t := range tags {
-		fmt.Fprintf(w, "%-20s  %s\n", t.Key, t.Value)
+		_, _ = fmt.Fprintf(w, "%-20s  %s\n", t.Key, t.Value)
 	}
 }
 

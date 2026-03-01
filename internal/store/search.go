@@ -43,7 +43,7 @@ func (s *Store) Search(query string, tags []model.Tag) ([]SearchResult, error) {
 	if err != nil {
 		return nil, fmt.Errorf("searching notes: %w", err)
 	}
-	defer rows.Close()
+	defer rows.Close() //nolint:errcheck // rows.Close error is checked via rows.Err
 
 	var results []SearchResult
 	for rows.Next() {
