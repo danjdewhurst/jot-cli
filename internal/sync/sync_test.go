@@ -27,6 +27,18 @@ func newTestSyncer(t *testing.T) (*jsync.Syncer, *store.Store) {
 	return jsync.New(s, syncDir), s
 }
 
+func newTestEncryptedSyncer(t *testing.T, passphrase string) (*jsync.Syncer, *store.Store) {
+	t.Helper()
+	dbPath := filepath.Join(t.TempDir(), "test.db")
+	s, err := store.Open(dbPath)
+	if err != nil {
+		t.Fatalf("opening store: %v", err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+	syncDir := filepath.Join(t.TempDir(), "sync")
+	return jsync.NewEncrypted(s, syncDir, passphrase), s
+}
+
 func TestPushCreatesChangesetFile(t *testing.T) {
 	syncer, st := newTestSyncer(t)
 
@@ -639,5 +651,226 @@ func TestPullEqualTimestampTiebreaker(t *testing.T) {
 		if pulled != 1 || conflicts != 0 {
 			t.Errorf("pulled=%d conflicts=%d, want pulled=1 conflicts=0", pulled, conflicts)
 		}
+	}
+}
+
+func TestEncryptedPushCreatesAgeFiles(t *testing.T) {
+	passphrase := "test-encryption-passphrase"
+	syncer, st := newTestEncryptedSyncer(t, passphrase)
+
+	_, err := st.CreateNote("Encrypted Note", "secret body", nil)
+	if err != nil {
+		t.Fatalf("creating note: %v", err)
+	}
+
+	pushed, err := syncer.Push()
+	if err != nil {
+		t.Fatalf("push: %v", err)
+	}
+	if pushed != 1 {
+		t.Errorf("pushed = %d, want 1", pushed)
+	}
+
+	// Verify .ndjson.age file exists (not .ndjson).
+	changesetsDir := filepath.Join(syncer.SyncDir(), "changesets")
+	entries, err := os.ReadDir(changesetsDir)
+	if err != nil {
+		t.Fatalf("reading changesets dir: %v", err)
+	}
+
+	var foundAge, foundPlain bool
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), ".ndjson.age") {
+			foundAge = true
+			// Verify the content is not plaintext.
+			data, err := os.ReadFile(filepath.Join(changesetsDir, e.Name()))
+			if err != nil {
+				t.Fatalf("reading file: %v", err)
+			}
+			if strings.Contains(string(data), "secret body") {
+				t.Error("encrypted file should not contain plaintext body")
+			}
+		}
+		if strings.HasSuffix(e.Name(), ".ndjson") && !strings.HasSuffix(e.Name(), ".ndjson.age") {
+			foundPlain = true
+		}
+	}
+
+	if !foundAge {
+		t.Error("expected .ndjson.age file in changesets directory")
+	}
+	if foundPlain {
+		t.Error("encrypted push should not create plain .ndjson files")
+	}
+}
+
+func TestEncryptedPushThenPullRoundTrip(t *testing.T) {
+	passphrase := "shared-secret"
+	syncerA, stA := newTestEncryptedSyncer(t, passphrase)
+	syncerB, stB := newTestEncryptedSyncer(t, passphrase)
+
+	_, _ = stA.CreateNote("Encrypted from A", "encrypted body", nil)
+	if _, err := syncerA.Push(); err != nil {
+		t.Fatalf("push A: %v", err)
+	}
+
+	copyChangesets(t, syncerA, syncerB)
+
+	pulled, _, err := syncerB.Pull()
+	if err != nil {
+		t.Fatalf("pull B: %v", err)
+	}
+	if pulled != 1 {
+		t.Errorf("pulled = %d, want 1", pulled)
+	}
+
+	notes, _ := stB.ListNotes(model.NoteFilter{})
+	if len(notes) != 1 {
+		t.Fatalf("got %d notes, want 1", len(notes))
+	}
+	if notes[0].Title != "Encrypted from A" {
+		t.Errorf("title = %q, want %q", notes[0].Title, "Encrypted from A")
+	}
+}
+
+func TestPullMixedEncryptedAndPlaintext(t *testing.T) {
+	passphrase := "shared-secret"
+
+	// Machine A pushes unencrypted.
+	syncerA, stA := newTestSyncer(t)
+	_, _ = stA.CreateNote("Plain Note", "plain body", nil)
+	if _, err := syncerA.Push(); err != nil {
+		t.Fatalf("push A: %v", err)
+	}
+
+	// Machine B pushes encrypted.
+	syncerB, stB := newTestEncryptedSyncer(t, passphrase)
+	_, _ = stB.CreateNote("Encrypted Note", "encrypted body", nil)
+	if _, err := syncerB.Push(); err != nil {
+		t.Fatalf("push B: %v", err)
+	}
+
+	// Machine C (encrypted) pulls from both.
+	syncerC, stC := newTestEncryptedSyncer(t, passphrase)
+	copyChangesets(t, syncerA, syncerC)
+	copyChangesets(t, syncerB, syncerC)
+
+	pulled, _, err := syncerC.Pull()
+	if err != nil {
+		t.Fatalf("pull C: %v", err)
+	}
+	if pulled != 2 {
+		t.Errorf("pulled = %d, want 2", pulled)
+	}
+
+	notes, _ := stC.ListNotes(model.NoteFilter{})
+	if len(notes) != 2 {
+		t.Fatalf("got %d notes, want 2", len(notes))
+	}
+}
+
+func TestPullEncryptedWithWrongPassphrase(t *testing.T) {
+	syncerA, stA := newTestEncryptedSyncer(t, "correct-passphrase")
+	_, _ = stA.CreateNote("Secret", "body", nil)
+	if _, err := syncerA.Push(); err != nil {
+		t.Fatalf("push A: %v", err)
+	}
+
+	syncerB, _ := newTestEncryptedSyncer(t, "wrong-passphrase")
+	copyChangesets(t, syncerA, syncerB)
+
+	_, _, err := syncerB.Pull()
+	if err == nil {
+		t.Error("pull with wrong passphrase should return an error")
+	}
+}
+
+func TestMigrateEncryptsExistingFiles(t *testing.T) {
+	passphrase := "migration-passphrase"
+
+	// Push unencrypted changesets first.
+	syncerPlain, stPlain := newTestSyncer(t)
+	_, _ = stPlain.CreateNote("Note 1", "body 1", nil)
+	_, _ = stPlain.CreateNote("Note 2", "body 2", nil)
+	if _, err := syncerPlain.Push(); err != nil {
+		t.Fatalf("push: %v", err)
+	}
+
+	// Create an encrypted syncer pointing at the same sync dir.
+	syncDir := syncerPlain.SyncDir()
+	dbPath := filepath.Join(t.TempDir(), "migrate.db")
+	st, err := store.Open(dbPath)
+	if err != nil {
+		t.Fatalf("opening store: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+	syncer := jsync.NewEncrypted(st, syncDir, passphrase)
+
+	// Run migrate.
+	migrated, err := syncer.MigrateEncrypt()
+	if err != nil {
+		t.Fatalf("MigrateEncrypt: %v", err)
+	}
+	if migrated != 1 {
+		t.Errorf("migrated = %d, want 1", migrated)
+	}
+
+	// Verify: no .ndjson files remain, only .ndjson.age.
+	changesetsDir := filepath.Join(syncDir, "changesets")
+	entries, err := os.ReadDir(changesetsDir)
+	if err != nil {
+		t.Fatalf("reading changesets: %v", err)
+	}
+
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), ".ndjson") && !strings.HasSuffix(e.Name(), ".ndjson.age") {
+			t.Errorf("plain .ndjson file %q should have been migrated", e.Name())
+		}
+	}
+
+	var ageCount int
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), ".ndjson.age") {
+			ageCount++
+		}
+	}
+	if ageCount != 1 {
+		t.Errorf("expected 1 .ndjson.age file, got %d", ageCount)
+	}
+
+	// Verify the encrypted file can be decrypted and pulled.
+	syncerB, stB := newTestEncryptedSyncer(t, passphrase)
+	copyChangesets(t, syncer, syncerB)
+
+	pulled, _, err := syncerB.Pull()
+	if err != nil {
+		t.Fatalf("pull after migration: %v", err)
+	}
+	if pulled != 2 {
+		t.Errorf("pulled = %d, want 2", pulled)
+	}
+
+	notes, _ := stB.ListNotes(model.NoteFilter{})
+	if len(notes) != 2 {
+		t.Errorf("got %d notes, want 2", len(notes))
+	}
+}
+
+func TestMigrateNoOpWhenNoPlainFiles(t *testing.T) {
+	passphrase := "test-passphrase"
+	syncer, st := newTestEncryptedSyncer(t, passphrase)
+
+	// Push encrypted — no plain files to migrate.
+	_, _ = st.CreateNote("Already Encrypted", "body", nil)
+	if _, err := syncer.Push(); err != nil {
+		t.Fatalf("push: %v", err)
+	}
+
+	migrated, err := syncer.MigrateEncrypt()
+	if err != nil {
+		t.Fatalf("MigrateEncrypt: %v", err)
+	}
+	if migrated != 0 {
+		t.Errorf("migrated = %d, want 0 (no plain files)", migrated)
 	}
 }

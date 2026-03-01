@@ -14,6 +14,7 @@ import (
 type Config struct {
 	DBPath       string
 	SyncDir      string
+	IdentityPath string
 	Editor       string
 	DefaultLimit int
 	DateFormat   string
@@ -66,6 +67,7 @@ func Load() (Config, error) {
 	cfg := Config{
 		DBPath:       filepath.Join(dataDir, "jot.db"),
 		SyncDir:      filepath.Join(dataDir, "sync"),
+		IdentityPath: filepath.Join(dataDir, "sync.key"),
 		Editor:       tf.General.Editor,
 		DefaultLimit: tf.General.DefaultLimit,
 		DateFormat:   tf.Display.DateFormat,

@@ -26,13 +26,24 @@ type StatusResult struct {
 
 // Syncer coordinates push/pull operations against a sync directory.
 type Syncer struct {
-	store   *store.Store
-	syncDir string
+	store      *store.Store
+	syncDir    string
+	passphrase string
 }
 
 // New creates a Syncer for the given store and sync directory.
 func New(s *store.Store, syncDir string) *Syncer {
 	return &Syncer{store: s, syncDir: syncDir}
+}
+
+// NewEncrypted creates a Syncer that encrypts changesets using the given passphrase.
+func NewEncrypted(s *store.Store, syncDir, passphrase string) *Syncer {
+	return &Syncer{store: s, syncDir: syncDir, passphrase: passphrase}
+}
+
+// Encrypted returns true if the syncer is configured for encryption.
+func (s *Syncer) Encrypted() bool {
+	return s.passphrase != ""
 }
 
 // SyncDir returns the path to the sync directory.

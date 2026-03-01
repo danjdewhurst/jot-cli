@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -76,8 +77,32 @@ func (s *Syncer) push() (int, error) {
 	}
 
 	now := time.Now().UTC()
-	filename := fmt.Sprintf("%s_%s.ndjson", mid, now.Format(time.RFC3339))
+	ext := ".ndjson"
+	if s.passphrase != "" {
+		ext = ".ndjson.age"
+	}
+	filename := fmt.Sprintf("%s_%s%s", mid, now.Format(time.RFC3339), ext)
 	path := filepath.Join(s.syncDir, "changesets", filename)
+
+	// Build NDJSON content in memory.
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	for _, ce := range deduped {
+		if err := enc.Encode(ce); err != nil {
+			return 0, fmt.Errorf("encoding changeset entry: %w", err)
+		}
+	}
+
+	content := buf.Bytes()
+
+	// Encrypt if passphrase is set.
+	if s.passphrase != "" {
+		encrypted, err := Encrypt(s.passphrase, content)
+		if err != nil {
+			return 0, fmt.Errorf("encrypting changeset: %w", err)
+		}
+		content = encrypted
+	}
 
 	// Write to a temporary file, fsync, then atomically rename to avoid
 	// corrupt changesets if the process crashes mid-write.
@@ -87,13 +112,10 @@ func (s *Syncer) push() (int, error) {
 		return 0, fmt.Errorf("creating changeset temp file: %w", err)
 	}
 
-	enc := json.NewEncoder(f)
-	for _, ce := range deduped {
-		if err := enc.Encode(ce); err != nil {
-			_ = f.Close()
-			_ = os.Remove(tmpPath)
-			return 0, fmt.Errorf("writing changeset entry: %w", err)
-		}
+	if _, err := f.Write(content); err != nil {
+		_ = f.Close()
+		_ = os.Remove(tmpPath)
+		return 0, fmt.Errorf("writing changeset file: %w", err)
 	}
 
 	if err := f.Sync(); err != nil {
