@@ -3,6 +3,7 @@ package store_test
 import (
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/danjdewhurst/jot-cli/internal/model"
 	"github.com/danjdewhurst/jot-cli/internal/store"
@@ -352,5 +353,117 @@ func TestListTags(t *testing.T) {
 	}
 	if len(tags) != 2 {
 		t.Errorf("got %d folder tags, want 2", len(tags))
+	}
+}
+
+func TestListNotes_Since(t *testing.T) {
+	s := newTestStore(t)
+
+	// Create notes — all created "now" by the store
+	_, _ = s.CreateNote("Old", "body", nil)
+	time.Sleep(10 * time.Millisecond)
+	_, _ = s.CreateNote("New", "body", nil)
+
+	// Since = a moment ago should return both
+	past := time.Now().UTC().Add(-1 * time.Hour)
+	notes, err := s.ListNotes(model.NoteFilter{Since: &past})
+	if err != nil {
+		t.Fatalf("listing: %v", err)
+	}
+	if len(notes) != 2 {
+		t.Errorf("got %d notes, want 2", len(notes))
+	}
+
+	// Since = future should return none
+	future := time.Now().UTC().Add(1 * time.Hour)
+	notes, err = s.ListNotes(model.NoteFilter{Since: &future})
+	if err != nil {
+		t.Fatalf("listing: %v", err)
+	}
+	if len(notes) != 0 {
+		t.Errorf("got %d notes, want 0", len(notes))
+	}
+}
+
+func TestListNotes_Until(t *testing.T) {
+	s := newTestStore(t)
+
+	_, _ = s.CreateNote("Note", "body", nil)
+
+	// Until = future should return the note
+	future := time.Now().UTC().Add(1 * time.Hour)
+	notes, err := s.ListNotes(model.NoteFilter{Until: &future})
+	if err != nil {
+		t.Fatalf("listing: %v", err)
+	}
+	if len(notes) != 1 {
+		t.Errorf("got %d notes, want 1", len(notes))
+	}
+
+	// Until = past should return none
+	past := time.Now().UTC().Add(-1 * time.Hour)
+	notes, err = s.ListNotes(model.NoteFilter{Until: &past})
+	if err != nil {
+		t.Fatalf("listing: %v", err)
+	}
+	if len(notes) != 0 {
+		t.Errorf("got %d notes, want 0", len(notes))
+	}
+}
+
+func TestListNotes_SinceAndUntil(t *testing.T) {
+	s := newTestStore(t)
+
+	_, _ = s.CreateNote("Note", "body", nil)
+
+	// Range that includes now
+	past := time.Now().UTC().Add(-1 * time.Hour)
+	future := time.Now().UTC().Add(1 * time.Hour)
+	notes, err := s.ListNotes(model.NoteFilter{Since: &past, Until: &future})
+	if err != nil {
+		t.Fatalf("listing: %v", err)
+	}
+	if len(notes) != 1 {
+		t.Errorf("got %d notes, want 1", len(notes))
+	}
+
+	// Range entirely in the past
+	pastStart := time.Now().UTC().Add(-2 * time.Hour)
+	pastEnd := time.Now().UTC().Add(-1 * time.Hour)
+	notes, err = s.ListNotes(model.NoteFilter{Since: &pastStart, Until: &pastEnd})
+	if err != nil {
+		t.Fatalf("listing: %v", err)
+	}
+	if len(notes) != 0 {
+		t.Errorf("got %d notes, want 0", len(notes))
+	}
+}
+
+func TestListNotes_SortAsc(t *testing.T) {
+	s := newTestStore(t)
+
+	first, _ := s.CreateNote("First", "body", nil)
+	time.Sleep(1100 * time.Millisecond) // ensure different created_at second
+	second, _ := s.CreateNote("Second", "body", nil)
+
+	// Default: newest first (DESC)
+	notes, err := s.ListNotes(model.NoteFilter{})
+	if err != nil {
+		t.Fatalf("listing: %v", err)
+	}
+	if len(notes) != 2 {
+		t.Fatalf("got %d notes, want 2", len(notes))
+	}
+	if notes[0].ID != second.ID {
+		t.Errorf("default order: first note = %q, want %q", notes[0].Title, "Second")
+	}
+
+	// SortAsc: oldest first
+	notes, err = s.ListNotes(model.NoteFilter{SortAsc: true})
+	if err != nil {
+		t.Fatalf("listing: %v", err)
+	}
+	if notes[0].ID != first.ID {
+		t.Errorf("asc order: first note = %q, want %q", notes[0].Title, "First")
 	}
 }

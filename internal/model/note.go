@@ -19,4 +19,7 @@ type NoteFilter struct {
 	PinnedOnly bool
 	Limit      int
 	Offset     int
+	Since      *time.Time // only notes created at or after this time
+	Until      *time.Time // only notes created before this time
+	SortAsc    bool       // if true, order by created_at ASC (oldest first)
 }

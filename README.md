@@ -95,6 +95,7 @@ j
 | `j` | Launch TUI (or list if not a TTY) |
 | `j add` | Create a note — via flags, `$EDITOR`, or stdin |
 | `j list` | List notes with optional tag filters |
+| `j log` | Compact, git-log style chronological view of notes |
 | `j show <id>` | Display a single note |
 | `j edit <id>` | Edit a note — via flags or `$EDITOR` |
 | `j rm <id>` | Archive a note (or `--purge --force` to delete) |

@@ -167,11 +167,24 @@ func (s *Store) ListNotes(filter model.NoteFilter) ([]model.Note, error) {
 		conditions = append(conditions, "n.pinned = 1")
 	}
 
+	if filter.Since != nil {
+		conditions = append(conditions, "n.created_at >= ?")
+		args = append(args, filter.Since.Format(time.RFC3339))
+	}
+	if filter.Until != nil {
+		conditions = append(conditions, "n.created_at < ?")
+		args = append(args, filter.Until.Format(time.RFC3339))
+	}
+
 	if len(conditions) > 0 {
 		query += " WHERE " + strings.Join(conditions, " AND ")
 	}
 
-	query += " ORDER BY n.pinned DESC, n.created_at DESC"
+	if filter.SortAsc {
+		query += " ORDER BY n.pinned DESC, n.created_at ASC"
+	} else {
+		query += " ORDER BY n.pinned DESC, n.created_at DESC"
+	}
 
 	if filter.Limit > 0 {
 		query += fmt.Sprintf(" LIMIT %d", filter.Limit)

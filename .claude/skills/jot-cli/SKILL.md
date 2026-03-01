@@ -49,6 +49,15 @@ j unpin <id> --json               # Explicitly unpin
 # List only pinned notes
 j list --pinned --json
 
+# Chronological log (compact, git-log style)
+j log --json                                 # Default: 20 most recent notes
+j log --today --json                         # Today's notes (no limit)
+j log --since 2026-01-01 --until 2026-02-01 --json
+j log --reverse --json                       # Oldest first
+j log --limit 50 --json                      # Custom limit (0 for unlimited)
+j log --tag "project:alpha" --json           # Filter by tag
+j log --repo --json                          # Filter by current git repo
+
 # Export notes to JSON
 j export --json
 j export -o backup.json
