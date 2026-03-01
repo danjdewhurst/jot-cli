@@ -10,11 +10,11 @@ linters:
     - errorlint
     - gocritic
     - misspell
-
-linters-settings:
-  misspell:
-    locale: UK
-
-issues:
-  exclude-dirs:
-    - vendor
+  settings:
+    misspell:
+      locale: UK
+      ignore-rules:
+        - Color
+  exclusions:
+    presets:
+      - comments
