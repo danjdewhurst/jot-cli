@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/duncanjbrown/jot-cli/internal/model"
+	"github.com/danjdewhurst/jot-cli/internal/model"
 )
 
 // resolveNote finds a note by full or prefix ID.

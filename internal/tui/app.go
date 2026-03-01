@@ -5,9 +5,9 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/duncanjbrown/jot-cli/internal/model"
-	"github.com/duncanjbrown/jot-cli/internal/store"
-	"github.com/duncanjbrown/jot-cli/internal/tui/views"
+	"github.com/danjdewhurst/jot-cli/internal/model"
+	"github.com/danjdewhurst/jot-cli/internal/store"
+	"github.com/danjdewhurst/jot-cli/internal/tui/views"
 )
 
 type viewID int

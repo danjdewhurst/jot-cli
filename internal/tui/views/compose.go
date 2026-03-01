@@ -7,7 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/duncanjbrown/jot-cli/internal/model"
+	"github.com/danjdewhurst/jot-cli/internal/model"
 )
 
 var composeLabelStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("243"))

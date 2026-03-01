@@ -3,7 +3,7 @@ package store
 import (
 	"fmt"
 
-	"github.com/duncanjbrown/jot-cli/internal/model"
+	"github.com/danjdewhurst/jot-cli/internal/model"
 )
 
 func (s *Store) AddTag(noteID string, tag model.Tag) error {

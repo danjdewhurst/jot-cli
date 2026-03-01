@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/duncanjbrown/jot-cli/internal/model"
-	"github.com/duncanjbrown/jot-cli/internal/store"
+	"github.com/danjdewhurst/jot-cli/internal/model"
+	"github.com/danjdewhurst/jot-cli/internal/store"
 )
 
 func newTestStore(t *testing.T) *store.Store {

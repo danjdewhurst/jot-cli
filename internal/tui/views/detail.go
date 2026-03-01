@@ -6,7 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/duncanjbrown/jot-cli/internal/model"
+	"github.com/danjdewhurst/jot-cli/internal/model"
 )
 
 var (

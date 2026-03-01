@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/duncanjbrown/jot-cli/cmd"
+	"github.com/danjdewhurst/jot-cli/cmd"
 )
 
 func main() {

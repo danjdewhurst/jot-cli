@@ -1,6 +1,6 @@
 package context
 
-import "github.com/duncanjbrown/jot-cli/internal/model"
+import "github.com/danjdewhurst/jot-cli/internal/model"
 
 func AutoTags() []model.Tag {
 	var tags []model.Tag

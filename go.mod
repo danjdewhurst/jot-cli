@@ -1,4 +1,4 @@
-module github.com/duncanjbrown/jot-cli
+module github.com/danjdewhurst/jot-cli
 
 go 1.25.5
 

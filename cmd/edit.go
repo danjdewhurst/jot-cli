@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/duncanjbrown/jot-cli/internal/editor"
-	"github.com/duncanjbrown/jot-cli/internal/render"
+	"github.com/danjdewhurst/jot-cli/internal/editor"
+	"github.com/danjdewhurst/jot-cli/internal/render"
 	"github.com/spf13/cobra"
 )
 

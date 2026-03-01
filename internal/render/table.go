@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/duncanjbrown/jot-cli/internal/model"
+	"github.com/danjdewhurst/jot-cli/internal/model"
 )
 
 func NoteTable(w io.Writer, notes []model.Note) {

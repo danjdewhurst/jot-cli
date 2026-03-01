@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/duncanjbrown/jot-cli/internal/config"
-	"github.com/duncanjbrown/jot-cli/internal/store"
+	"github.com/danjdewhurst/jot-cli/internal/config"
+	"github.com/danjdewhurst/jot-cli/internal/store"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 )

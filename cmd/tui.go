@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/duncanjbrown/jot-cli/internal/tui"
+	"github.com/danjdewhurst/jot-cli/internal/tui"
 	"github.com/spf13/cobra"
 )
 
