@@ -87,6 +87,8 @@ j
 | `j edit <id>` | Edit a note — via flags or `$EDITOR` |
 | `j rm <id>` | Archive a note (or `--purge --force` to delete) |
 | `j search <query>` | Full-text search with FTS5 |
+| `j export` | Export notes to JSON or Markdown |
+| `j import <file>` | Import notes from a JSON export |
 | `j tag list` | Browse all tags |
 | `j tag add <id> <key:value>` | Tag a note |
 | `j tag rm <id> <key:value>` | Remove a tag |
@@ -134,6 +136,13 @@ kubectl get pods | j add -t "Pod status"
 
 # Structured output for scripts
 j search "deploy" --json | jq '.[].note.title'
+
+# Export and re-import notes
+j export --tag project:alpha -o backup.json
+j import backup.json
+
+# Pipe between instances
+j export --tag project:alpha | j import --new-ids -
 
 # Default to JSON everywhere
 export JOT_JSON=1
