@@ -112,21 +112,22 @@ func (s *Syncer) processChangeset(path string) (int, int, []string, error) {
 				continue
 			}
 			local, err := s.store.GetNote(ce.Note.ID)
-			if err != nil {
+			switch {
+			case err != nil:
 				// Note not found locally — import it.
 				if err := s.store.UpsertNote(*ce.Note); err != nil {
 					return pulled, conflicts, importedNoteIDs, fmt.Errorf("importing note %s: %w", ce.Note.ID, err)
 				}
 				pulled++
 				importedNoteIDs = append(importedNoteIDs, ce.Note.ID)
-			} else if ce.Note.UpdatedAt.After(local.UpdatedAt) {
+			case ce.Note.UpdatedAt.After(local.UpdatedAt):
 				// Remote is newer — overwrite.
 				if err := s.store.UpsertNote(*ce.Note); err != nil {
 					return pulled, conflicts, importedNoteIDs, fmt.Errorf("updating note %s: %w", ce.Note.ID, err)
 				}
 				pulled++
 				importedNoteIDs = append(importedNoteIDs, ce.Note.ID)
-			} else {
+			default:
 				// Local is newer — keep ours.
 				conflicts++
 			}

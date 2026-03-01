@@ -20,7 +20,7 @@ var (
 // NoteLog renders notes in a compact, git-log style chronological format.
 func NoteLog(w io.Writer, notes []model.Note) {
 	if len(notes) == 0 {
-		fmt.Fprintln(w, "No notes found.")
+		_, _ = fmt.Fprintln(w, "No notes found.")
 		return
 	}
 
@@ -37,7 +37,7 @@ func NoteLog(w io.Writer, notes []model.Note) {
 		}
 		title = logTitleStyle.Render(title)
 
-		fmt.Fprintf(w, "%s  %s  %s\n", id, ts, title)
+		_, _ = fmt.Fprintf(w, "%s  %s  %s\n", id, ts, title)
 
 		if len(n.Tags) > 0 {
 			var parts []string
@@ -45,11 +45,11 @@ func NoteLog(w io.Writer, notes []model.Note) {
 				parts = append(parts, logTagKeyStyle.Render(t.Key+":")+logTagValueStyle.Render(t.Value))
 			}
 			indent := strings.Repeat(" ", 28)
-			fmt.Fprintf(w, "%s%s\n", indent, strings.Join(parts, "  "))
+			_, _ = fmt.Fprintf(w, "%s%s\n", indent, strings.Join(parts, "  "))
 		}
 
 		if i < len(notes)-1 {
-			fmt.Fprintln(w)
+			_, _ = fmt.Fprintln(w)
 		}
 	}
 }
