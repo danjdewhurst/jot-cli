@@ -21,6 +21,9 @@ func NoteTable(w io.Writer, notes []model.Note) {
 
 	for _, n := range notes {
 		title := n.Title
+		if n.Pinned {
+			title = "* " + title
+		}
 		if len(title) > 40 {
 			title = title[:37] + "…"
 		}
@@ -44,6 +47,10 @@ func NoteDetail(w io.Writer, n model.Note) {
 	_, _ = fmt.Fprintf(w, "Title:   %s\n", n.Title)
 	_, _ = fmt.Fprintf(w, "Created: %s\n", n.CreatedAt.Format(time.RFC3339))
 	_, _ = fmt.Fprintf(w, "Updated: %s\n", n.UpdatedAt.Format(time.RFC3339))
+
+	if n.Pinned {
+		_, _ = fmt.Fprintf(w, "Pinned:  yes\n")
+	}
 
 	if len(n.Tags) > 0 {
 		var tagStrs []string

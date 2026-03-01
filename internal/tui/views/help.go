@@ -21,6 +21,7 @@ func (h HelpView) View() string {
 	b.WriteString("  n       New note\n")
 	b.WriteString("  e       Edit note\n")
 	b.WriteString("  d       Archive note\n")
+	b.WriteString("  p       Toggle pin\n")
 	b.WriteString("  /       Search\n")
 	b.WriteString("  ?       This help\n")
 	b.WriteString("  q       Quit\n\n")

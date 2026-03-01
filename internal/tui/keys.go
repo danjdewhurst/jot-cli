@@ -12,6 +12,7 @@ type keyMap struct {
 	Search        key.Binding
 	Edit          key.Binding
 	ContextFilter key.Binding
+	Pin           key.Binding
 	Up            key.Binding
 	Down          key.Binding
 	PageUp        key.Binding
@@ -28,6 +29,7 @@ var keys = keyMap{
 	Search:   key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "search")),
 	Edit:          key.NewBinding(key.WithKeys("e"), key.WithHelp("e", "edit")),
 	ContextFilter: key.NewBinding(key.WithKeys("c"), key.WithHelp("c", "toggle context filter")),
+	Pin:           key.NewBinding(key.WithKeys("p"), key.WithHelp("p", "toggle pin")),
 	Up:       key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
 	Down:     key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
 	PageUp:   key.NewBinding(key.WithKeys("pgup", "ctrl+u"), key.WithHelp("pgup", "page up")),

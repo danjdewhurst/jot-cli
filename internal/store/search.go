@@ -15,7 +15,7 @@ type SearchResult struct {
 }
 
 func (s *Store) Search(query string, tags []model.Tag) ([]SearchResult, error) {
-	q := `SELECT n.id, n.title, n.body, n.created_at, n.updated_at, n.archived,
+	q := `SELECT n.id, n.title, n.body, n.created_at, n.updated_at, n.archived, n.pinned,
 	             snippet(notes_fts, 2, '<mark>', '</mark>', '…', 32) as snippet,
 	             notes_fts.rank
 	      FROM notes_fts
@@ -49,10 +49,10 @@ func (s *Store) Search(query string, tags []model.Tag) ([]SearchResult, error) {
 	for rows.Next() {
 		var r SearchResult
 		var createdAt, updatedAt string
-		var archived int
+		var archived, pinned int
 		if err := rows.Scan(
 			&r.Note.ID, &r.Note.Title, &r.Note.Body,
-			&createdAt, &updatedAt, &archived,
+			&createdAt, &updatedAt, &archived, &pinned,
 			&r.Snippet, &r.Rank,
 		); err != nil {
 			return nil, fmt.Errorf("scanning search result: %w", err)
@@ -60,6 +60,7 @@ func (s *Store) Search(query string, tags []model.Tag) ([]SearchResult, error) {
 		r.Note.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
 		r.Note.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
 		r.Note.Archived = archived != 0
+		r.Note.Pinned = pinned != 0
 
 		noteTags, err := s.getTagsForNote(r.Note.ID)
 		if err != nil {

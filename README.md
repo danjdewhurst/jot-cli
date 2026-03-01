@@ -86,6 +86,8 @@ j
 | `j show <id>` | Display a single note |
 | `j edit <id>` | Edit a note — via flags or `$EDITOR` |
 | `j rm <id>` | Archive a note (or `--purge --force` to delete) |
+| `j pin <id>` | Toggle pin on a note (pinned notes float to the top) |
+| `j unpin <id>` | Explicitly unpin a note |
 | `j search <query>` | Full-text search with FTS5 |
 | `j export` | Export notes to JSON or Markdown |
 | `j import <file>` | Import notes from a JSON export |
@@ -193,6 +195,7 @@ Run `j` with no arguments to launch the interactive interface.
 <tr><td><kbd>n</kbd></td><td>New note</td></tr>
 <tr><td><kbd>e</kbd></td><td>Edit note</td></tr>
 <tr><td><kbd>d</kbd></td><td>Archive note</td></tr>
+<tr><td><kbd>p</kbd></td><td>Toggle pin</td></tr>
 <tr><td><kbd>/</kbd></td><td>Search</td></tr>
 <tr><td><kbd>Tab</kbd></td><td>Switch title / body (compose)</td></tr>
 <tr><td><kbd>Ctrl+S</kbd></td><td>Save (compose)</td></tr>

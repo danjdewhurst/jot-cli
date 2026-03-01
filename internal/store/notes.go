@@ -54,11 +54,11 @@ func (s *Store) CreateNote(title, body string, tags []model.Tag) (model.Note, er
 func (s *Store) GetNote(id string) (model.Note, error) {
 	var n model.Note
 	var createdAt, updatedAt string
-	var archived int
+	var archived, pinned int
 
 	err := s.db.QueryRow(
-		"SELECT id, title, body, created_at, updated_at, archived FROM notes WHERE id = ?", id,
-	).Scan(&n.ID, &n.Title, &n.Body, &createdAt, &updatedAt, &archived)
+		"SELECT id, title, body, created_at, updated_at, archived, pinned FROM notes WHERE id = ?", id,
+	).Scan(&n.ID, &n.Title, &n.Body, &createdAt, &updatedAt, &archived, &pinned)
 	if errors.Is(err, sql.ErrNoRows) {
 		return model.Note{}, fmt.Errorf("note %q not found", id)
 	}
@@ -69,6 +69,7 @@ func (s *Store) GetNote(id string) (model.Note, error) {
 	n.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
 	n.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
 	n.Archived = archived != 0
+	n.Pinned = pinned != 0
 
 	tags, err := s.getTagsForNote(n.ID)
 	if err != nil {
@@ -146,7 +147,7 @@ func (s *Store) DeleteNote(id string) error {
 }
 
 func (s *Store) ListNotes(filter model.NoteFilter) ([]model.Note, error) {
-	query := "SELECT DISTINCT n.id, n.title, n.body, n.created_at, n.updated_at, n.archived FROM notes n"
+	query := "SELECT DISTINCT n.id, n.title, n.body, n.created_at, n.updated_at, n.archived, n.pinned FROM notes n"
 	var args []any
 	var conditions []string
 
@@ -162,11 +163,15 @@ func (s *Store) ListNotes(filter model.NoteFilter) ([]model.Note, error) {
 		conditions = append(conditions, "n.archived = 0")
 	}
 
+	if filter.PinnedOnly {
+		conditions = append(conditions, "n.pinned = 1")
+	}
+
 	if len(conditions) > 0 {
 		query += " WHERE " + strings.Join(conditions, " AND ")
 	}
 
-	query += " ORDER BY n.created_at DESC"
+	query += " ORDER BY n.pinned DESC, n.created_at DESC"
 
 	if filter.Limit > 0 {
 		query += fmt.Sprintf(" LIMIT %d", filter.Limit)
@@ -185,13 +190,14 @@ func (s *Store) ListNotes(filter model.NoteFilter) ([]model.Note, error) {
 	for rows.Next() {
 		var n model.Note
 		var createdAt, updatedAt string
-		var archived int
-		if err := rows.Scan(&n.ID, &n.Title, &n.Body, &createdAt, &updatedAt, &archived); err != nil {
+		var archived, pinned int
+		if err := rows.Scan(&n.ID, &n.Title, &n.Body, &createdAt, &updatedAt, &archived, &pinned); err != nil {
 			return nil, fmt.Errorf("scanning note: %w", err)
 		}
 		n.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
 		n.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
 		n.Archived = archived != 0
+		n.Pinned = pinned != 0
 
 		tags, err := s.getTagsForNote(n.ID)
 		if err != nil {
@@ -233,6 +239,41 @@ func insertTags(tx *sql.Tx, noteID string, tags []model.Tag) error {
 		}
 	}
 	return nil
+}
+
+func (s *Store) PinNote(id string) error {
+	res, err := s.db.Exec("UPDATE notes SET pinned = 1, updated_at = ? WHERE id = ?",
+		time.Now().UTC().Format(time.RFC3339), id)
+	if err != nil {
+		return fmt.Errorf("pinning note: %w", err)
+	}
+	if rows, _ := res.RowsAffected(); rows == 0 {
+		return fmt.Errorf("note %q not found", id)
+	}
+	return nil
+}
+
+func (s *Store) UnpinNote(id string) error {
+	res, err := s.db.Exec("UPDATE notes SET pinned = 0, updated_at = ? WHERE id = ?",
+		time.Now().UTC().Format(time.RFC3339), id)
+	if err != nil {
+		return fmt.Errorf("unpinning note: %w", err)
+	}
+	if rows, _ := res.RowsAffected(); rows == 0 {
+		return fmt.Errorf("note %q not found", id)
+	}
+	return nil
+}
+
+func (s *Store) TogglePin(id string) (pinned bool, err error) {
+	note, err := s.GetNote(id)
+	if err != nil {
+		return false, err
+	}
+	if note.Pinned {
+		return false, s.UnpinNote(id)
+	}
+	return true, s.PinNote(id)
 }
 
 // syncFTS upserts the FTS entry for a note. Call within a transaction.

@@ -42,6 +42,13 @@ j rm <id> --json
 # Permanently delete
 j rm <id> --purge --force --json
 
+# Pin/unpin a note (pinned notes float to top of lists)
+j pin <id> --json                 # Toggle pin
+j unpin <id> --json               # Explicitly unpin
+
+# List only pinned notes
+j list --pinned --json
+
 # Export notes to JSON
 j export --json
 j export -o backup.json

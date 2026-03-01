@@ -66,6 +66,9 @@ func (d DetailView) View() string {
 	if title == "" {
 		title = "(untitled)"
 	}
+	if d.note.Pinned {
+		title = "* " + title
+	}
 	b.WriteString(detailTitleStyle.Render(title))
 	b.WriteString("\n")
 

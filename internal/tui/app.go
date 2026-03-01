@@ -54,6 +54,11 @@ type noteArchivedMsg struct {
 	id string
 }
 
+type notePinnedMsg struct {
+	id     string
+	pinned bool
+}
+
 type searchResultsMsg struct {
 	results []store.SearchResult
 }
@@ -128,6 +133,14 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case noteArchivedMsg:
 		a.statusMsg = "Note archived"
+		return a, loadNotes(a.store, a.contextFilter)
+
+	case notePinnedMsg:
+		if msg.pinned {
+			a.statusMsg = "Note pinned"
+		} else {
+			a.statusMsg = "Note unpinned"
+		}
 		return a, loadNotes(a.store, a.contextFilter)
 
 	case searchResultsMsg:
@@ -208,6 +221,19 @@ func (a *App) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(kmsg, keys.Search):
 			a.search.Reset()
 			a.pushView(viewSearch)
+			return a, nil
+		case key.Matches(kmsg, keys.Pin):
+			if note, ok := a.list.SelectedNote(); ok {
+				s := a.store
+				noteID := note.ID
+				return a, func() tea.Msg {
+					pinned, err := s.TogglePin(noteID)
+					if err != nil {
+						return statusMsg(fmt.Sprintf("Error: %v", err))
+					}
+					return notePinnedMsg{id: noteID, pinned: pinned}
+				}
+			}
 			return a, nil
 		case key.Matches(kmsg, keys.ContextFilter):
 			a.contextFilter = !a.contextFilter
@@ -315,7 +341,7 @@ func (a App) renderStatusBar() string {
 	right := ""
 	switch a.view {
 	case viewList:
-		right = "n:new  /:search  c:context  ?:help  q:quit"
+		right = "n:new  p:pin  /:search  c:context  ?:help  q:quit"
 	case viewDetail:
 		right = "e:edit  esc:back"
 	case viewCompose:

@@ -201,6 +201,137 @@ func TestAddAndRemoveTag(t *testing.T) {
 	}
 }
 
+func TestPinNote(t *testing.T) {
+	s := newTestStore(t)
+
+	note, _ := s.CreateNote("To Pin", "body", nil)
+	if note.Pinned {
+		t.Fatal("new note should not be pinned")
+	}
+
+	if err := s.PinNote(note.ID); err != nil {
+		t.Fatalf("pinning note: %v", err)
+	}
+
+	got, err := s.GetNote(note.ID)
+	if err != nil {
+		t.Fatalf("getting note: %v", err)
+	}
+	if !got.Pinned {
+		t.Error("expected note to be pinned")
+	}
+}
+
+func TestUnpinNote(t *testing.T) {
+	s := newTestStore(t)
+
+	note, _ := s.CreateNote("To Unpin", "body", nil)
+	_ = s.PinNote(note.ID)
+
+	if err := s.UnpinNote(note.ID); err != nil {
+		t.Fatalf("unpinning note: %v", err)
+	}
+
+	got, _ := s.GetNote(note.ID)
+	if got.Pinned {
+		t.Error("expected note to be unpinned")
+	}
+}
+
+func TestTogglePin(t *testing.T) {
+	s := newTestStore(t)
+
+	note, _ := s.CreateNote("Toggle Me", "body", nil)
+
+	pinned, err := s.TogglePin(note.ID)
+	if err != nil {
+		t.Fatalf("first toggle: %v", err)
+	}
+	if !pinned {
+		t.Error("expected pinned after first toggle")
+	}
+
+	pinned, err = s.TogglePin(note.ID)
+	if err != nil {
+		t.Fatalf("second toggle: %v", err)
+	}
+	if pinned {
+		t.Error("expected unpinned after second toggle")
+	}
+}
+
+func TestPinnedNotesFloatToTop(t *testing.T) {
+	s := newTestStore(t)
+
+	oldest, _ := s.CreateNote("Oldest", "body", nil)
+	_, _ = s.CreateNote("Middle", "body", nil)
+	_, _ = s.CreateNote("Newest", "body", nil)
+
+	_ = s.PinNote(oldest.ID)
+
+	notes, err := s.ListNotes(model.NoteFilter{})
+	if err != nil {
+		t.Fatalf("listing notes: %v", err)
+	}
+	if len(notes) != 3 {
+		t.Fatalf("got %d notes, want 3", len(notes))
+	}
+	if notes[0].ID != oldest.ID {
+		t.Errorf("expected pinned note first, got %q", notes[0].Title)
+	}
+}
+
+func TestPinnedOnlyFilter(t *testing.T) {
+	s := newTestStore(t)
+
+	pinned, _ := s.CreateNote("Pinned", "body", nil)
+	_, _ = s.CreateNote("Not Pinned", "body", nil)
+
+	_ = s.PinNote(pinned.ID)
+
+	notes, err := s.ListNotes(model.NoteFilter{PinnedOnly: true})
+	if err != nil {
+		t.Fatalf("listing notes: %v", err)
+	}
+	if len(notes) != 1 {
+		t.Errorf("got %d notes, want 1", len(notes))
+	}
+	if notes[0].Title != "Pinned" {
+		t.Errorf("got title %q, want %q", notes[0].Title, "Pinned")
+	}
+}
+
+func TestPinNonExistentNote(t *testing.T) {
+	s := newTestStore(t)
+
+	if err := s.PinNote("nonexistent"); err == nil {
+		t.Error("expected error pinning non-existent note")
+	}
+}
+
+func TestArchivedAndPinned(t *testing.T) {
+	s := newTestStore(t)
+
+	note, _ := s.CreateNote("Pinned and Archived", "body", nil)
+	_ = s.PinNote(note.ID)
+	_ = s.ArchiveNote(note.ID)
+
+	// Should not appear in default list
+	notes, _ := s.ListNotes(model.NoteFilter{})
+	if len(notes) != 0 {
+		t.Errorf("got %d notes, want 0 (archived pinned note should be hidden)", len(notes))
+	}
+
+	// Should appear with archived filter and still be pinned
+	notes, _ = s.ListNotes(model.NoteFilter{Archived: true})
+	if len(notes) != 1 {
+		t.Fatalf("got %d notes, want 1 with archived filter", len(notes))
+	}
+	if !notes[0].Pinned {
+		t.Error("expected note to still be pinned after archiving")
+	}
+}
+
 func TestListTags(t *testing.T) {
 	s := newTestStore(t)
 

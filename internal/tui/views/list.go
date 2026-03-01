@@ -133,6 +133,9 @@ func (l ListView) View() string {
 		if title == "" {
 			title = "(empty)"
 		}
+		if n.Pinned {
+			title = "* " + title
+		}
 
 		age := relativeTime(n.CreatedAt)
 		var tagParts []string

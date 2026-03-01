@@ -44,6 +44,10 @@ var listCmd = &cobra.Command{
 		archived, _ := cmd.Flags().GetBool("archived")
 		filter.Archived = archived
 
+		if pinned, _ := cmd.Flags().GetBool("pinned"); pinned {
+			filter.PinnedOnly = true
+		}
+
 		limit, _ := cmd.Flags().GetInt("limit")
 		filter.Limit = limit
 
@@ -67,6 +71,7 @@ func init() {
 	listCmd.Flags().Bool("repo", false, "Filter by current git repo")
 	listCmd.Flags().Bool("branch", false, "Filter by current git branch")
 	listCmd.Flags().Bool("archived", false, "Include archived notes")
+	listCmd.Flags().Bool("pinned", false, "Show only pinned notes")
 	listCmd.Flags().Int("limit", 0, "Limit number of results")
 	rootCmd.AddCommand(listCmd)
 }

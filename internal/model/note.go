@@ -9,12 +9,14 @@ type Note struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	Archived  bool      `json:"archived"`
+	Pinned    bool      `json:"pinned"`
 	Tags      []Tag     `json:"tags,omitempty"`
 }
 
 type NoteFilter struct {
-	Tags     []Tag
-	Archived bool
-	Limit    int
-	Offset   int
+	Tags       []Tag
+	Archived   bool
+	PinnedOnly bool
+	Limit      int
+	Offset     int
 }
