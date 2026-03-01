@@ -23,7 +23,7 @@ archives:
   - formats: [tar.gz]
     name_template: "jot-cli_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
-brews:
+homebrew_casks:
   - repository:
       owner: danjdewhurst
       name: homebrew-tap
@@ -32,11 +32,15 @@ brews:
     homepage: https://github.com/danjdewhurst/jot-cli
     description: A fast, context-aware notes tool for the terminal
     license: MIT
-    install: |
-      bin.install "jot-cli"
-      bin.install_symlink "jot-cli" => "j"
-    test: |
-      assert_match "jot-cli", shell_output("#{bin}/jot-cli version")
+    binaries:
+      - jot-cli
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/jot-cli"]
+          end
+          system_command "/bin/ln", args: ["-sf", "#{HOMEBREW_PREFIX}/bin/jot-cli", "#{HOMEBREW_PREFIX}/bin/j"]
 
 checksum:
   name_template: "checksums.txt"
