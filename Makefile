@@ -16,6 +16,10 @@ lint:
 clean:
 	rm -rf bin/
 
+INSTALL_DIR := $(HOME)/.local/bin
+
 install: build
-	cp $(BIN) $(GOPATH)/bin/jot-cli 2>/dev/null || cp $(BIN) ~/go/bin/jot-cli
-	ln -sf jot-cli $(GOPATH)/bin/j 2>/dev/null || ln -sf ~/go/bin/jot-cli ~/go/bin/j
+	mkdir -p $(INSTALL_DIR)
+	cp $(BIN) $(INSTALL_DIR)/jot-cli
+	ln -sf jot-cli $(INSTALL_DIR)/j
+	@echo "Installed jot-cli and j to $(INSTALL_DIR)"
