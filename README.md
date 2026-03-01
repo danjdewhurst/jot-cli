@@ -39,6 +39,18 @@ brew install jot-cli
 
 This installs `jot-cli` and a `j` shorthand alias.
 
+**Shell script:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/danjdewhurst/jot-cli/main/install.sh | sh
+```
+
+To install a specific version or to a custom directory:
+
+```bash
+VERSION=0.3.0 INSTALL_DIR=/usr/local/bin curl -fsSL https://raw.githubusercontent.com/danjdewhurst/jot-cli/main/install.sh | sh
+```
+
 **Go:**
 
 ```bash
