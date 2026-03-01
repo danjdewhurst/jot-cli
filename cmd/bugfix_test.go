@@ -42,7 +42,7 @@ func TestTagAdd_GetNoteErrorPropagated(t *testing.T) {
 		t.Fatalf("tag add should succeed: %v", err)
 	}
 
-	w.Close()
+	_ = w.Close()
 	var buf bytes.Buffer
 	_, _ = buf.ReadFrom(r)
 
@@ -79,7 +79,7 @@ func TestTagRm_GetNoteErrorPropagated(t *testing.T) {
 		t.Fatalf("tag rm should succeed: %v", err)
 	}
 
-	w.Close()
+	_ = w.Close()
 	var buf bytes.Buffer
 	_, _ = buf.ReadFrom(r)
 
