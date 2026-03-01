@@ -321,6 +321,19 @@ func (s *Store) TogglePin(id string) (pinned bool, err error) {
 	return newPinned != 0, nil
 }
 
+// NoteExistsByContent checks if a note with matching title and body already exists.
+func (s *Store) NoteExistsByContent(title, body string) (bool, error) {
+	var exists int
+	err := s.db.QueryRow("SELECT 1 FROM notes WHERE title = ? AND body = ? LIMIT 1", title, body).Scan(&exists)
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("checking note existence: %w", err)
+	}
+	return true, nil
+}
+
 // syncFTS upserts the FTS entry for a note. Call within a transaction.
 func syncFTS(tx *sql.Tx, noteID string) error {
 	// Gather tag strings
