@@ -99,6 +99,7 @@ j
 | `j show <id>` | Display a single note |
 | `j edit <id>` | Edit a note — via flags or `$EDITOR` |
 | `j rm <id>` | Archive a note (or `--purge --force` to delete) |
+| `j dup <id>` | Duplicate a note (copies title, body, and user tags) |
 | `j pin <id>` | Toggle pin on a note (pinned notes float to the top) |
 | `j unpin <id>` | Explicitly unpin a note |
 | `j stats` | Show aggregate note statistics |

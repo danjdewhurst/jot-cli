@@ -89,6 +89,9 @@ j sync --sync-dir /path/to/shared --json     # Use specific sync directory
 j stats                                      # Human-readable summary
 j stats --json                               # Machine-readable output
 
+# Duplicate a note (copies title, body, user tags; regenerates context tags)
+j dup <id> --json
+
 # Manage tags
 j tag list --json
 j tag add <id> "key:value" --json
