@@ -89,6 +89,10 @@ j
 | `j search <query>` | Full-text search with FTS5 |
 | `j export` | Export notes to JSON or Markdown |
 | `j import <file>` | Import notes from a JSON export |
+| `j sync` | Synchronise notes via a shared directory |
+| `j sync status` | Show pending changes and last sync time |
+| `j sync push` | Push local changes only |
+| `j sync pull` | Pull remote changes only |
 | `j tag list` | Browse all tags |
 | `j tag add <id> <key:value>` | Tag a note |
 | `j tag rm <id> <key:value>` | Remove a tag |
@@ -123,6 +127,34 @@ j list --tag git_repo:danjdewhurst/jot-cli   # Explicit tag filter
 ```
 
 Skip auto-tagging with `--no-context`.
+
+---
+
+## Sync
+
+Synchronise notes between machines using any shared folder — Dropbox, Syncthing, iCloud Drive, a mounted network share, etc.
+
+```bash
+# Full sync (push local changes, then pull remote changes)
+j sync
+
+# Check what's pending
+j sync status
+
+# Push or pull independently
+j sync push
+j sync pull
+
+# Use a specific sync directory
+j sync --sync-dir /mnt/nas/jot
+
+# Machine-readable output
+j sync --json
+```
+
+**How it works:** Each machine pushes its changes as NDJSON changeset files to the sync directory. On pull, changesets from other machines are ingested. Conflicts are resolved by last-write-wins using `updated_at` timestamps — the most recent edit always wins.
+
+The sync directory defaults to `~/.local/share/jot/sync/` (respects `XDG_DATA_HOME`) and can be overridden with `--sync-dir` or `JOT_SYNC_DIR`.
 
 ---
 
@@ -180,12 +212,14 @@ Run `j` with no arguments to launch the interactive interface.
 | Path | Purpose |
 |------|---------|
 | `~/.local/share/jot/jot.db` | Database (respects `XDG_DATA_HOME`) |
+| `~/.local/share/jot/sync/` | Sync directory (respects `XDG_DATA_HOME`) |
 
 ### Environment variables
 
 | Variable | Description |
 |----------|-------------|
 | `JOT_DB` | Override database path |
+| `JOT_SYNC_DIR` | Override sync directory path |
 | `JOT_JSON` | Set to `1` for JSON output by default |
 | `EDITOR` / `VISUAL` | Editor for composing notes |
 | `NO_COLOR` | Disable colour output |
@@ -246,6 +280,7 @@ cmd/              CLI commands (Cobra)
 internal/
   model/          Domain types — Note, Tag, NoteFilter
   store/          SQLite data layer — CRUD, tags, FTS5
+  sync/           File-based sync — push, pull, conflict resolution
   context/        Git & folder detection (filesystem only, no exec)
   editor/         $EDITOR integration
   render/         JSON & table output formatters

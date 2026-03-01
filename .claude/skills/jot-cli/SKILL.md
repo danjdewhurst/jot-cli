@@ -62,6 +62,13 @@ j import -                                # Read from stdin
 # Pipe between instances
 j export --tag project:alpha | j import --new-ids -
 
+# Sync notes between machines (via shared directory)
+j sync --json                                # Full push + pull
+j sync status --json                         # Pending changes and last sync time
+j sync push --json                           # Push local changes only
+j sync pull --json                           # Pull remote changes only
+j sync --sync-dir /path/to/shared --json     # Use specific sync directory
+
 # Manage tags
 j tag list --json
 j tag add <id> "key:value" --json

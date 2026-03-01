@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
 
 	_ "modernc.org/sqlite"
@@ -65,10 +67,14 @@ func setPragmas(db *sql.DB) error {
 }
 
 func (s *Store) migrate() error {
-	data, err := migrations.ReadFile("migrations/001_initial.sql")
+	entries, err := migrations.ReadDir("migrations")
 	if err != nil {
-		return fmt.Errorf("reading migration: %w", err)
+		return fmt.Errorf("reading migrations directory: %w", err)
 	}
+
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].Name() < entries[j].Name()
+	})
 
 	// database/sql.Exec only runs the first statement, so we need a
 	// single connection and execute statements individually.
@@ -78,15 +84,46 @@ func (s *Store) migrate() error {
 	}
 	defer conn.Close() //nolint:errcheck // best-effort close on migration connection
 
-	for _, stmt := range splitSQL(string(data)) {
-		stmt = strings.TrimSpace(stmt)
-		if stmt == "" {
+	var currentVersion int
+	if err := conn.QueryRowContext(context.Background(), "PRAGMA user_version").Scan(&currentVersion); err != nil {
+		return fmt.Errorf("reading user_version: %w", err)
+	}
+
+	for _, entry := range entries {
+		name := entry.Name()
+		// Extract version number from filename prefix (e.g. "001_initial.sql" → 1)
+		parts := strings.SplitN(name, "_", 2)
+		if len(parts) < 2 {
 			continue
 		}
-		if _, err := conn.ExecContext(context.Background(), stmt); err != nil {
-			return fmt.Errorf("executing migration statement: %w\nSQL: %s", err, stmt)
+		version, err := strconv.Atoi(parts[0])
+		if err != nil {
+			continue
+		}
+		if version <= currentVersion {
+			continue
+		}
+
+		data, err := migrations.ReadFile("migrations/" + name)
+		if err != nil {
+			return fmt.Errorf("reading migration %s: %w", name, err)
+		}
+
+		for _, stmt := range splitSQL(string(data)) {
+			stmt = strings.TrimSpace(stmt)
+			if stmt == "" {
+				continue
+			}
+			if _, err := conn.ExecContext(context.Background(), stmt); err != nil {
+				return fmt.Errorf("executing migration %s: %w\nSQL: %s", name, err, stmt)
+			}
+		}
+
+		if _, err := conn.ExecContext(context.Background(), fmt.Sprintf("PRAGMA user_version = %d", version)); err != nil {
+			return fmt.Errorf("setting user_version to %d: %w", version, err)
 		}
 	}
+
 	return nil
 }
 

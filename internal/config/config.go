@@ -6,13 +6,22 @@ import (
 )
 
 type Config struct {
-	DBPath string
+	DBPath  string
+	SyncDir string
 }
 
 func Load() Config {
 	return Config{
-		DBPath: dbPath(),
+		DBPath:  dbPath(),
+		SyncDir: syncDir(),
 	}
+}
+
+func syncDir() string {
+	if p := os.Getenv("JOT_SYNC_DIR"); p != "" {
+		return p
+	}
+	return filepath.Join(dataDir(), "sync")
 }
 
 func dbPath() string {
