@@ -5,6 +5,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/danjdewhurst/jot-cli/internal/context"
 	"github.com/danjdewhurst/jot-cli/internal/model"
 	"github.com/danjdewhurst/jot-cli/internal/store"
 	"github.com/danjdewhurst/jot-cli/internal/tui/views"
@@ -21,11 +22,12 @@ const (
 )
 
 type App struct {
-	store     *store.Store
-	width     int
-	height    int
-	view      viewID
-	viewStack []viewID
+	store         *store.Store
+	width         int
+	height        int
+	view          viewID
+	viewStack     []viewID
+	contextFilter bool
 
 	list    views.ListView
 	detail  views.DetailView
@@ -58,9 +60,21 @@ type searchResultsMsg struct {
 
 type statusMsg string
 
-func loadNotes(s *store.Store) tea.Cmd {
+func loadNotes(s *store.Store, contextFilter bool) tea.Cmd {
 	return func() tea.Msg {
-		notes, err := s.ListNotes(model.NoteFilter{})
+		filter := model.NoteFilter{}
+		if contextFilter {
+			if folder, err := context.DetectFolder(); err == nil && folder != "" {
+				filter.Tags = append(filter.Tags, model.Tag{Key: "folder", Value: folder})
+			}
+			if repo, err := context.DetectRepo(); err == nil && repo != "" {
+				filter.Tags = append(filter.Tags, model.Tag{Key: "git_repo", Value: repo})
+			}
+			if branch, err := context.DetectBranch(); err == nil && branch != "" {
+				filter.Tags = append(filter.Tags, model.Tag{Key: "git_branch", Value: branch})
+			}
+		}
+		notes, err := s.ListNotes(filter)
 		if err != nil {
 			return statusMsg(fmt.Sprintf("Error: %v", err))
 		}
@@ -81,7 +95,7 @@ func newApp(s *store.Store) App {
 }
 
 func (a App) Init() tea.Cmd {
-	return loadNotes(a.store)
+	return loadNotes(a.store, a.contextFilter)
 }
 
 func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -105,16 +119,16 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case noteCreatedMsg:
 		a.statusMsg = fmt.Sprintf("Created: %s", msg.note.Title)
 		a.popView()
-		return a, loadNotes(a.store)
+		return a, loadNotes(a.store, a.contextFilter)
 
 	case noteUpdatedMsg:
 		a.statusMsg = fmt.Sprintf("Updated: %s", msg.note.Title)
 		a.popView()
-		return a, loadNotes(a.store)
+		return a, loadNotes(a.store, a.contextFilter)
 
 	case noteArchivedMsg:
 		a.statusMsg = "Note archived"
-		return a, loadNotes(a.store)
+		return a, loadNotes(a.store, a.contextFilter)
 
 	case searchResultsMsg:
 		var notes []model.Note
@@ -195,6 +209,15 @@ func (a *App) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.search.Reset()
 			a.pushView(viewSearch)
 			return a, nil
+		case key.Matches(kmsg, keys.ContextFilter):
+			a.contextFilter = !a.contextFilter
+			a.list.SetContextFilter(a.contextFilter)
+			if a.contextFilter {
+				a.statusMsg = "Context filter: on"
+			} else {
+				a.statusMsg = "Context filter: off"
+			}
+			return a, loadNotes(a.store, a.contextFilter)
 		}
 	}
 	a.list.Update(msg)
@@ -230,7 +253,7 @@ func (a *App) updateCompose(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			return a, func() tea.Msg {
-				note, err := s.CreateNote(title, body, nil)
+				note, err := s.CreateNote(title, body, context.AutoTags())
 				if err != nil {
 					return statusMsg(fmt.Sprintf("Error: %v", err))
 				}
@@ -294,7 +317,7 @@ func (a App) renderStatusBar() string {
 	right := ""
 	switch a.view {
 	case viewList:
-		right = "n:new  /:search  ?:help  q:quit"
+		right = "n:new  /:search  c:context  ?:help  q:quit"
 	case viewDetail:
 		right = "e:edit  esc:back"
 	case viewCompose:

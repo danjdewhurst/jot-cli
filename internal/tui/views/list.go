@@ -25,11 +25,12 @@ var (
 )
 
 type ListView struct {
-	notes    []model.Note
-	cursor   int
-	width    int
-	height   int
-	offset   int
+	notes         []model.Note
+	cursor        int
+	width         int
+	height        int
+	offset        int
+	contextFilter bool
 }
 
 func NewListView() ListView {
@@ -41,6 +42,10 @@ func (l *ListView) SetNotes(notes []model.Note) {
 	if l.cursor >= len(notes) && len(notes) > 0 {
 		l.cursor = len(notes) - 1
 	}
+}
+
+func (l *ListView) SetContextFilter(enabled bool) {
+	l.contextFilter = enabled
 }
 
 func (l *ListView) SetSize(w, h int) {
@@ -102,7 +107,11 @@ func (l ListView) View() string {
 	}
 
 	var b strings.Builder
-	b.WriteString(listTitleStyle.Render(fmt.Sprintf("jot — %d notes", len(l.notes))))
+	title := fmt.Sprintf("jot — %d notes", len(l.notes))
+	if l.contextFilter {
+		title += " (this project)"
+	}
+	b.WriteString(listTitleStyle.Render(title))
 	b.WriteString("\n")
 
 	visibleLines := l.height - 3

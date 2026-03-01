@@ -3,18 +3,19 @@ package tui
 import "github.com/charmbracelet/bubbles/key"
 
 type keyMap struct {
-	Quit     key.Binding
-	Help     key.Binding
-	Enter    key.Binding
-	Back     key.Binding
-	New      key.Binding
-	Delete   key.Binding
-	Search   key.Binding
-	Edit     key.Binding
-	Up       key.Binding
-	Down     key.Binding
-	PageUp   key.Binding
-	PageDown key.Binding
+	Quit          key.Binding
+	Help          key.Binding
+	Enter         key.Binding
+	Back          key.Binding
+	New           key.Binding
+	Delete        key.Binding
+	Search        key.Binding
+	Edit          key.Binding
+	ContextFilter key.Binding
+	Up            key.Binding
+	Down          key.Binding
+	PageUp        key.Binding
+	PageDown      key.Binding
 }
 
 var keys = keyMap{
@@ -25,7 +26,8 @@ var keys = keyMap{
 	New:      key.NewBinding(key.WithKeys("n"), key.WithHelp("n", "new note")),
 	Delete:   key.NewBinding(key.WithKeys("d"), key.WithHelp("d", "archive")),
 	Search:   key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "search")),
-	Edit:     key.NewBinding(key.WithKeys("e"), key.WithHelp("e", "edit")),
+	Edit:          key.NewBinding(key.WithKeys("e"), key.WithHelp("e", "edit")),
+	ContextFilter: key.NewBinding(key.WithKeys("c"), key.WithHelp("c", "toggle context filter")),
 	Up:       key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
 	Down:     key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
 	PageUp:   key.NewBinding(key.WithKeys("pgup", "ctrl+u"), key.WithHelp("pgup", "page up")),
