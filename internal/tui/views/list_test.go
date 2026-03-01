@@ -244,8 +244,7 @@ func TestListView_Update_ReturnsCmd(t *testing.T) {
 	lv.SetSize(80, 24)
 	lv.SetNotes(sampleNotes())
 
-	var cmd tea.Cmd
-	cmd = lv.Update(tea.KeyMsg{Type: tea.KeyDown})
+	cmd := lv.Update(tea.KeyMsg{Type: tea.KeyDown})
 	// In non-search mode, cmd should be nil
 	if cmd != nil {
 		t.Error("expected nil cmd in non-search mode")

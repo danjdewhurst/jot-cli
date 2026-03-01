@@ -49,7 +49,7 @@ var historyCmd = &cobra.Command{
 				// Compare combined title+body
 				oldContent := oldTitle + "\n" + oldBody
 				newContent := v.Title + "\n" + v.Body
-				fmt.Fprintf(os.Stdout, "\n%s", diff.Format(oldContent, newContent))
+				_, _ = fmt.Fprintf(os.Stdout, "\n%s", diff.Format(oldContent, newContent))
 			}
 			return nil
 		}

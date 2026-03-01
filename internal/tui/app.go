@@ -466,15 +466,16 @@ func (a App) renderStatusBar() string {
 	right := ""
 	switch a.view {
 	case viewList:
-		if a.list.IsSearching() {
+		switch {
+		case a.list.IsSearching():
 			count, query := a.list.ResultCount()
 			if query != "" {
 				left = fmt.Sprintf("%d results for '%s'", count, query)
 			}
 			right = "esc:clear search  enter:open"
-		} else if a.list.HasSelection() {
+		case a.list.HasSelection():
 			right = "a:archive  d:archive  p:pin  space:toggle  ctrl+a:all  esc:clear"
-		} else {
+		default:
 			right = "n:new  p:pin  /:filter  space:select  c:context  ?:help  q:quit"
 		}
 	case viewDetail:

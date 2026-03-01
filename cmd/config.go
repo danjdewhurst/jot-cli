@@ -20,7 +20,7 @@ var configCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), path)
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), path)
 			return nil
 		}
 
@@ -70,7 +70,7 @@ var configInitCmd = &cobra.Command{
 			return fmt.Errorf("writing config file: %w", err)
 		}
 
-		fmt.Fprintf(cmd.OutOrStdout(), "Created %s\n", path)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Created %s\n", path)
 		return nil
 	},
 }

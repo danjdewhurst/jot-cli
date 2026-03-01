@@ -197,7 +197,7 @@ func confirmBulk(cmd *cobra.Command, action string, count int) bool {
 	}
 	fmt.Fprintf(os.Stderr, "%s %d notes? [y/N] ", action, count)
 	var response string
-	fmt.Scanln(&response)
+	_, _ = fmt.Scanln(&response)
 	return response == "y" || response == "Y"
 }
 
