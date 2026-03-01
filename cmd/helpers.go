@@ -68,7 +68,11 @@ func buildNoteFilter(cmd *cobra.Command) (model.NoteFilter, error) {
 	}
 
 	limit, _ := cmd.Flags().GetInt("limit")
-	filter.Limit = limit
+	if limit > 0 {
+		filter.Limit = limit
+	} else if !cmd.Flags().Changed("limit") && cfg.DefaultLimit > 0 {
+		filter.Limit = cfg.DefaultLimit
+	}
 
 	return filter, nil
 }

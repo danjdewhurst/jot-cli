@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/danjdewhurst/jot-cli/internal/config"
+	"github.com/danjdewhurst/jot-cli/internal/render"
 	"github.com/danjdewhurst/jot-cli/internal/store"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -24,13 +25,6 @@ var rootCmd = &cobra.Command{
 	Short: "A CLI-first notes app",
 	Long:  "jot-cli is a fast, context-aware notes tool for the terminal.",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		// Apply JOT_JSON env var only if the --json flag was not explicitly set
-		if !cmd.Flags().Changed("json") {
-			if v := os.Getenv("JOT_JSON"); v == "1" || v == "true" {
-				flagJSON = true
-			}
-		}
-
 		var cfgErr error
 		cfg, cfgErr = config.Load()
 		if cfgErr != nil {
@@ -40,8 +34,16 @@ var rootCmd = &cobra.Command{
 			cfg.DBPath = flagDB
 		}
 
+		// Apply config/env JSON default only if --json flag was not explicitly set
+		if !cmd.Flags().Changed("json") && cfg.JSON {
+			flagJSON = true
+		}
+
+		// Set render date format from config
+		render.DateFormat = cfg.DateFormat
+
 		// Commands that don't need DB
-		if cmd.Name() == "version" || cmd.Name() == "context" {
+		if cmd.Name() == "version" || cmd.Name() == "context" || cmd.Name() == "config" || cmd.Name() == "init" {
 			return nil
 		}
 

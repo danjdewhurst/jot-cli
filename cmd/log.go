@@ -21,8 +21,9 @@ func runLog(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Default limit of 20 for log
-	if !cmd.Flags().Changed("limit") {
+	// Default limit of 20 for log (config default_limit already applied by buildNoteFilter,
+	// but log has its own fallback of 20 if neither --limit nor config is set)
+	if !cmd.Flags().Changed("limit") && cfg.DefaultLimit == 0 {
 		filter.Limit = 20
 	}
 
