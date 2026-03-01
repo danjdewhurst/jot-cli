@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 
+	"github.com/danjdewhurst/jot-cli/internal/model"
 	"github.com/danjdewhurst/jot-cli/internal/render"
 	"github.com/spf13/cobra"
 )
@@ -17,11 +19,20 @@ var showCmd = &cobra.Command{
 			return err
 		}
 
-		if flagJSON {
-			return render.JSON(os.Stdout, note)
+		backlinks, err := db.ReferencesTo(note.ID)
+		if err != nil {
+			return fmt.Errorf("querying backlinks: %w", err)
 		}
 
-		render.NoteDetail(os.Stdout, note)
+		if flagJSON {
+			type showOutput struct {
+				Note      model.Note   `json:"note"`
+				Backlinks []model.Note `json:"backlinks,omitempty"`
+			}
+			return render.JSON(os.Stdout, showOutput{Note: note, Backlinks: backlinks})
+		}
+
+		render.NoteDetail(os.Stdout, note, backlinks)
 		return nil
 	},
 }

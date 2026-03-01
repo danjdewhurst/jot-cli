@@ -61,6 +61,10 @@ type notePinnedMsg struct {
 	pinned bool
 }
 
+type backlinksLoadedMsg struct {
+	backlinks []model.Note
+}
+
 type searchResultsMsg struct {
 	results []store.SearchResult
 }
@@ -154,6 +158,10 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return a, tea.Batch(loadNotes(a.store, a.contextFilter), clearStatusAfter(3*time.Second))
 
+	case backlinksLoadedMsg:
+		a.detail.SetBacklinks(msg.backlinks)
+		return a, nil
+
 	case searchResultsMsg:
 		var notes []model.Note
 		for _, r := range msg.results {
@@ -216,6 +224,12 @@ func (a *App) updateList(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if note, ok := a.list.SelectedNote(); ok {
 				a.detail.SetNote(note)
 				a.pushView(viewDetail)
+				s := a.store
+				noteID := note.ID
+				return a, func() tea.Msg {
+					backlinks, _ := s.ReferencesTo(noteID)
+					return backlinksLoadedMsg{backlinks: backlinks}
+				}
 			}
 			return a, nil
 		case key.Matches(kmsg, keys.New):
@@ -311,7 +325,12 @@ func (a *App) updateSearch(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if note, ok := a.search.SelectedNote(); ok {
 				a.detail.SetNote(note)
 				a.pushView(viewDetail)
-				return a, nil
+				s := a.store
+				noteID := note.ID
+				return a, func() tea.Msg {
+					backlinks, _ := s.ReferencesTo(noteID)
+					return backlinksLoadedMsg{backlinks: backlinks}
+				}
 			}
 		}
 	}

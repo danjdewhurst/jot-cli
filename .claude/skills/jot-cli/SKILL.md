@@ -100,6 +100,12 @@ j dup <id> --json
 j tag list --json
 j tag add <id> "key:value" --json
 j tag rm <id> "key:value" --json
+
+# Note linking — reference other notes with @<id-prefix> in the body
+j add -t "Follow-up" -m "Related to @01JMXY and @01JNAB" --json
+
+# Show backlinks (notes that reference this one)
+j show <id> --json    # JSON output includes "backlinks" array
 ```
 
 ## Context Tags
@@ -110,6 +116,13 @@ Notes are automatically tagged with context when created:
 - `git_branch:<branch>` — current git branch
 
 Use `--no-context` with `j add` to skip auto-tagging.
+
+## Note Linking
+
+- Reference other notes in body text using `@<id-prefix>` (4+ characters)
+- References are auto-resolved to full note IDs and stored as `ref` tags
+- `j show <id>` displays a "Referenced by" section (backlinks)
+- References are reconciled on every save (create/edit) — stale links removed, new ones added
 
 ## Tips
 

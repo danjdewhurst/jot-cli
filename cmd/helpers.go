@@ -2,10 +2,12 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/danjdewhurst/jot-cli/internal/context"
+	"github.com/danjdewhurst/jot-cli/internal/linking"
 	"github.com/danjdewhurst/jot-cli/internal/model"
 	"github.com/spf13/cobra"
 )
@@ -115,6 +117,37 @@ func parseDate(s string) (time.Time, error) {
 		return t.UTC(), nil
 	}
 	return time.Time{}, fmt.Errorf("cannot parse %q as RFC 3339 or YYYY-MM-DD", s)
+}
+
+// syncNoteRefs scans a note body for @references, resolves them to full
+// note IDs, and syncs the ref tags. Unresolvable references are logged
+// as warnings to stderr. selfID is excluded from resolution to prevent
+// self-references.
+func syncNoteRefs(noteID, body string) {
+	prefixes := linking.ExtractRefs(body)
+	if len(prefixes) == 0 {
+		_ = db.SyncRefs(noteID, nil)
+		return
+	}
+
+	var resolved []string
+	for _, prefix := range prefixes {
+		note, err := resolveNote(prefix)
+		if err != nil {
+			if flagVerbose {
+				fmt.Fprintf(os.Stderr, "Warning: could not resolve reference @%s: %v\n", prefix, err)
+			}
+			continue
+		}
+		if note.ID == noteID {
+			continue // skip self-references
+		}
+		resolved = append(resolved, note.ID)
+	}
+
+	if err := db.SyncRefs(noteID, resolved); err != nil && flagVerbose {
+		fmt.Fprintf(os.Stderr, "Warning: failed to sync references: %v\n", err)
+	}
 }
 
 func filterByDateRange(notes []model.Note, since, until time.Time) []model.Note {

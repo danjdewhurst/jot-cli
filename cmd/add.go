@@ -72,6 +72,8 @@ var addCmd = &cobra.Command{
 			return fmt.Errorf("creating note: %w", err)
 		}
 
+		syncNoteRefs(note.ID, body)
+
 		if flagJSON {
 			return render.JSON(os.Stdout, note)
 		}

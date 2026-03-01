@@ -544,6 +544,163 @@ func TestErrNoteNotFound(t *testing.T) {
 	}
 }
 
+func TestSyncRefs(t *testing.T) {
+	s := newTestStore(t)
+
+	noteA, _ := s.CreateNote("Note A", "body", nil)
+	noteB, _ := s.CreateNote("Note B", "body", nil)
+	noteC, _ := s.CreateNote("Note C", "body", nil)
+
+	// Sync refs: noteA references noteB and noteC
+	if err := s.SyncRefs(noteA.ID, []string{noteB.ID, noteC.ID}); err != nil {
+		t.Fatalf("syncing refs: %v", err)
+	}
+
+	// noteA should have ref tags
+	got, _ := s.GetNote(noteA.ID)
+	refCount := 0
+	for _, tag := range got.Tags {
+		if tag.Key == "ref" {
+			refCount++
+		}
+	}
+	if refCount != 2 {
+		t.Errorf("got %d ref tags, want 2", refCount)
+	}
+}
+
+func TestSyncRefs_Reconcile(t *testing.T) {
+	s := newTestStore(t)
+
+	noteA, _ := s.CreateNote("Note A", "body", nil)
+	noteB, _ := s.CreateNote("Note B", "body", nil)
+	noteC, _ := s.CreateNote("Note C", "body", nil)
+
+	// First sync: A -> B
+	if err := s.SyncRefs(noteA.ID, []string{noteB.ID}); err != nil {
+		t.Fatalf("first sync: %v", err)
+	}
+
+	// Second sync: A -> C (removes B, adds C)
+	if err := s.SyncRefs(noteA.ID, []string{noteC.ID}); err != nil {
+		t.Fatalf("second sync: %v", err)
+	}
+
+	got, _ := s.GetNote(noteA.ID)
+	var refs []string
+	for _, tag := range got.Tags {
+		if tag.Key == "ref" {
+			refs = append(refs, tag.Value)
+		}
+	}
+	if len(refs) != 1 || refs[0] != noteC.ID {
+		t.Errorf("expected ref to %s only, got %v", noteC.ID, refs)
+	}
+}
+
+func TestSyncRefs_Empty(t *testing.T) {
+	s := newTestStore(t)
+
+	noteA, _ := s.CreateNote("Note A", "body", nil)
+	noteB, _ := s.CreateNote("Note B", "body", nil)
+
+	// Add a ref, then clear all
+	_ = s.SyncRefs(noteA.ID, []string{noteB.ID})
+	if err := s.SyncRefs(noteA.ID, nil); err != nil {
+		t.Fatalf("clearing refs: %v", err)
+	}
+
+	got, _ := s.GetNote(noteA.ID)
+	for _, tag := range got.Tags {
+		if tag.Key == "ref" {
+			t.Error("expected no ref tags after clearing")
+		}
+	}
+}
+
+func TestSyncRefs_PreservesOtherTags(t *testing.T) {
+	s := newTestStore(t)
+
+	noteA, _ := s.CreateNote("Note A", "body", []model.Tag{{Key: "folder", Value: "work"}})
+	noteB, _ := s.CreateNote("Note B", "body", nil)
+
+	if err := s.SyncRefs(noteA.ID, []string{noteB.ID}); err != nil {
+		t.Fatalf("syncing refs: %v", err)
+	}
+
+	got, _ := s.GetNote(noteA.ID)
+	hasFolderTag := false
+	hasRefTag := false
+	for _, tag := range got.Tags {
+		if tag.Key == "folder" && tag.Value == "work" {
+			hasFolderTag = true
+		}
+		if tag.Key == "ref" {
+			hasRefTag = true
+		}
+	}
+	if !hasFolderTag {
+		t.Error("folder tag was removed during ref sync")
+	}
+	if !hasRefTag {
+		t.Error("ref tag was not added")
+	}
+}
+
+func TestReferencesTo(t *testing.T) {
+	s := newTestStore(t)
+
+	noteA, _ := s.CreateNote("Note A", "body", nil)
+	noteB, _ := s.CreateNote("Note B", "body", nil)
+	noteC, _ := s.CreateNote("Note C", "body", nil)
+
+	// A and C both reference B
+	_ = s.SyncRefs(noteA.ID, []string{noteB.ID})
+	_ = s.SyncRefs(noteC.ID, []string{noteB.ID})
+
+	refs, err := s.ReferencesTo(noteB.ID)
+	if err != nil {
+		t.Fatalf("getting references: %v", err)
+	}
+	if len(refs) != 2 {
+		t.Errorf("got %d references, want 2", len(refs))
+	}
+}
+
+func TestReferencesTo_NoneFound(t *testing.T) {
+	s := newTestStore(t)
+
+	note, _ := s.CreateNote("Lonely Note", "body", nil)
+
+	refs, err := s.ReferencesTo(note.ID)
+	if err != nil {
+		t.Fatalf("getting references: %v", err)
+	}
+	if len(refs) != 0 {
+		t.Errorf("got %d references, want 0", len(refs))
+	}
+}
+
+func TestReferencesTo_DeletedSourceCleansUp(t *testing.T) {
+	s := newTestStore(t)
+
+	noteA, _ := s.CreateNote("Note A", "body", nil)
+	noteB, _ := s.CreateNote("Note B", "body", nil)
+
+	_ = s.SyncRefs(noteA.ID, []string{noteB.ID})
+
+	// Delete A — cascade should remove the ref tag
+	_ = s.DeleteNote(noteA.ID)
+
+	refs, err := s.ReferencesTo(noteB.ID)
+	if err != nil {
+		t.Fatalf("getting references: %v", err)
+	}
+	if len(refs) != 0 {
+		t.Errorf("got %d references after source deleted, want 0", len(refs))
+	}
+}
+
 func TestListNotes_SortAsc(t *testing.T) {
 	s := newTestStore(t)
 

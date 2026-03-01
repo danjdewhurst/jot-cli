@@ -43,7 +43,7 @@ func NoteTable(w io.Writer, notes []model.Note) {
 	}
 }
 
-func NoteDetail(w io.Writer, n model.Note) {
+func NoteDetail(w io.Writer, n model.Note, backlinks []model.Note) {
 	_, _ = fmt.Fprintf(w, "ID:      %s\n", n.ID)
 	_, _ = fmt.Fprintf(w, "Title:   %s\n", n.Title)
 	_, _ = fmt.Fprintf(w, "Created: %s\n", n.CreatedAt.Format(time.RFC3339))
@@ -63,6 +63,17 @@ func NoteDetail(w io.Writer, n model.Note) {
 
 	if n.Body != "" {
 		_, _ = fmt.Fprintf(w, "\n%s\n", n.Body)
+	}
+
+	if len(backlinks) > 0 {
+		_, _ = fmt.Fprintf(w, "\nReferenced by:\n")
+		for _, bl := range backlinks {
+			title := bl.Title
+			if title == "" {
+				title = "(untitled)"
+			}
+			_, _ = fmt.Fprintf(w, "  %s  %s\n", shortID(bl.ID), title)
+		}
 	}
 }
 

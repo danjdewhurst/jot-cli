@@ -44,6 +44,51 @@ func TestDetailView_ScrollClampedInUpdate(t *testing.T) {
 	}
 }
 
+func TestDetailView_BacklinksDisplayed(t *testing.T) {
+	dv := views.NewDetailView()
+	dv.SetSize(80, 40)
+	dv.SetNote(model.Note{
+		ID:        "01TARGET",
+		Title:     "Target Note",
+		Body:      "Some content",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	})
+	dv.SetBacklinks([]model.Note{
+		{ID: "01ABCDEF12345678", Title: "Linking Note"},
+	})
+
+	out := dv.View()
+	if !strings.Contains(out, "Referenced by") {
+		t.Error("expected 'Referenced by' section in detail view")
+	}
+	if !strings.Contains(out, "01ABCDEF") {
+		t.Error("expected backlink note ID (truncated) in detail view")
+	}
+	if !strings.Contains(out, "Linking Note") {
+		t.Error("expected backlink note title in detail view")
+	}
+}
+
+func TestDetailView_RefHighlighting(t *testing.T) {
+	dv := views.NewDetailView()
+	dv.SetSize(80, 40)
+	dv.SetNote(model.Note{
+		Title:     "Note with refs",
+		Body:      "See @abc123 for details",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	})
+
+	out := dv.View()
+	// The raw "@abc123" should be replaced with a styled version
+	// The styled version will contain ANSI escape codes, so just check
+	// that "abc123" is still present (styling wraps it)
+	if !strings.Contains(out, "abc123") {
+		t.Error("expected reference content in output")
+	}
+}
+
 func TestDetailView_ScrollNeverNegative(t *testing.T) {
 	dv := views.NewDetailView()
 	dv.SetSize(80, 24)

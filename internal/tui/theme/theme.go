@@ -81,6 +81,20 @@ var (
 
 	DetailPin = lipgloss.NewStyle().
 			Foreground(Yellow)
+
+	DetailRef = lipgloss.NewStyle().
+			Foreground(Lavender).
+			Bold(true)
+
+	DetailBacklinkHeader = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(Overlay1).
+				PaddingLeft(1).
+				PaddingTop(1)
+
+	DetailBacklink = lipgloss.NewStyle().
+			Foreground(Lavender).
+			PaddingLeft(3)
 )
 
 // ── Compose view ────────────────────────────────────────────────────────

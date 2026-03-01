@@ -148,6 +148,26 @@ Skip auto-tagging with `--no-context`.
 
 ---
 
+## Note linking
+
+Reference other notes using `@<id-prefix>` syntax in note bodies:
+
+```bash
+j add -t "Follow-up" -m "Related to @01JMXY and @01JNAB"
+```
+
+**How it works:**
+
+- On save (create or edit), jot scans the body for `@<prefix>` references (4+ alphanumeric characters)
+- Each prefix is resolved to a full note ID and stored as a `ref` tag
+- `j show <id>` displays a "Referenced by" section listing notes that link to this one (backlinks)
+- The TUI detail view highlights `@` references and shows backlinks
+- Unresolvable references are silently skipped (use `--verbose` to see warnings)
+- Circular references are allowed
+- When a note body is edited, references are reconciled — stale links are removed, new ones added
+
+---
+
 ## Sync
 
 Synchronise notes between machines using any shared folder — Dropbox, Syncthing, iCloud Drive, a mounted network share, etc.

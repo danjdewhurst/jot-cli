@@ -58,6 +58,8 @@ var editCmd = &cobra.Command{
 			return fmt.Errorf("updating note: %w", err)
 		}
 
+		syncNoteRefs(updated.ID, body)
+
 		if flagJSON {
 			return render.JSON(os.Stdout, updated)
 		}

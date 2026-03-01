@@ -5,15 +5,17 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/danjdewhurst/jot-cli/internal/linking"
 	"github.com/danjdewhurst/jot-cli/internal/model"
 	"github.com/danjdewhurst/jot-cli/internal/tui/theme"
 )
 
 type DetailView struct {
-	note   model.Note
-	width  int
-	height int
-	scroll int
+	note      model.Note
+	backlinks []model.Note
+	width     int
+	height    int
+	scroll    int
 }
 
 func NewDetailView() DetailView {
@@ -22,7 +24,12 @@ func NewDetailView() DetailView {
 
 func (d *DetailView) SetNote(n model.Note) {
 	d.note = n
+	d.backlinks = nil
 	d.scroll = 0
+}
+
+func (d *DetailView) SetBacklinks(notes []model.Note) {
+	d.backlinks = notes
 }
 
 func (d *DetailView) Note() model.Note {
@@ -96,9 +103,43 @@ func (d DetailView) renderContent() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(theme.DetailBody.Render(d.note.Body))
+	b.WriteString(theme.DetailBody.Render(highlightRefs(d.note.Body)))
+
+	if len(d.backlinks) > 0 {
+		b.WriteString("\n")
+		b.WriteString(theme.DetailBacklinkHeader.Render("Referenced by:"))
+		b.WriteString("\n")
+		for _, bl := range d.backlinks {
+			title := bl.Title
+			if title == "" {
+				title = "(untitled)"
+			}
+			id := bl.ID
+			if len(id) > 8 {
+				id = id[:8]
+			}
+			b.WriteString(theme.DetailBacklink.Render(
+				theme.DetailRef.Render(id) + "  " + title,
+			))
+			b.WriteString("\n")
+		}
+	}
 
 	return b.String()
+}
+
+// highlightRefs replaces @<prefix> references in body text with styled versions.
+func highlightRefs(body string) string {
+	refs := linking.ExtractRefs(body)
+	if len(refs) == 0 {
+		return body
+	}
+	result := body
+	for _, ref := range refs {
+		styled := theme.DetailRef.Render("@" + ref)
+		result = strings.ReplaceAll(result, "@"+ref, styled)
+	}
+	return result
 }
 
 // contentLineCount returns the number of lines in the rendered content.
